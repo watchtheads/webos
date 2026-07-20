@@ -50,6 +50,7 @@ function closeWindow(element) {
 
 function openWindow(element) {
   element.style.display = "flex";
+  bringToFront(element);
 }
 
 var welcomeScreenClose = document.querySelector("#welcomeclose");
@@ -61,4 +62,26 @@ welcomeScreenClose.addEventListener("click", function() {
 
 welcomeScreenOpen.addEventListener("click", function() {
   openWindow(welcomeScreen);
+});
+dragElement(document.querySelector("#notes"));
+
+var notesScreen = document.querySelector("#notes");
+var notesScreenClose = document.querySelector("#notesclose");
+
+notesScreenClose.addEventListener("click", function() {
+  closeWindow(notesScreen);
+});
+var biggestIndex = 1;
+
+function bringToFront(element) {
+  biggestIndex++;
+  element.style.zIndex = biggestIndex;
+}
+
+welcomeScreen.addEventListener("mousedown", function() {
+  bringToFront(welcomeScreen);
+});
+
+notesScreen.addEventListener("mousedown", function() {
+  bringToFront(notesScreen);
 });
