@@ -254,18 +254,6 @@ document.querySelector("#calcClear").addEventListener("click", function() {
   calcDisplay.value = "0";
 });
 
-function toggleApp(screen) {
-  if (screen.style.display === "flex") {
-    closeWindow(screen);
-  } else {
-    closeWindow(welcomeScreen);
-    closeWindow(notesScreen);
-    closeWindow(coffeeScreen);
-    closeWindow(calcScreen);
-    closeWindow(settingsScreen);
-    openWindow(screen);
-  }
-}
 dragElement(document.querySelector("#settings"));
 
 var settingsScreen = document.querySelector("#settings");
@@ -297,3 +285,16 @@ themeOptions.forEach(function(btn) {
     document.body.style.backgroundColor = btn.dataset.theme;
   });
 });
+
+function toggleApp(screen) {
+  if (screen.style.display === "flex") {
+    closeWindow(screen);
+  } else {
+    closeWindow(welcomeScreen);
+    closeWindow(notesScreen);
+    closeWindow(coffeeScreen);
+    closeWindow(calcScreen);
+    closeWindow(settingsScreen);
+    openWindow(screen);
+  }
+}
