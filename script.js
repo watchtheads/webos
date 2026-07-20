@@ -503,3 +503,19 @@ document.querySelectorAll(".contextMenuItem").forEach(function(item) {
     contextMenu.style.display = "none";
   });
 });
+var bootScreen = document.querySelector("#bootScreen");
+var bootBar = document.querySelector("#bootBar");
+
+setTimeout(function() {
+  bootBar.style.transition = "width 1s ease-out";
+  bootBar.style.width = "100%";
+}, 100);
+
+setTimeout(function() {
+  bootScreen.style.transition = "opacity 0.5s ease-out";
+  bootScreen.style.opacity = "0";
+}, 1300);
+
+setTimeout(function() {
+  bootScreen.style.display = "none";
+}, 1800);
