@@ -519,3 +519,64 @@ setTimeout(function() {
 setTimeout(function() {
   bootScreen.style.display = "none";
 }, 1800);
+function makeResizable(element) {
+  const handles = element.querySelectorAll('.resizeHandle');
+  let isResizing = false;
+  let currentHandle = null;
+  let startX = 0;
+  let startY = 0;
+  let startWidth = 0;
+  let startHeight = 0;
+  let startLeft = 0;
+  let startTop = 0;
+
+  handles.forEach(handle => {
+    handle.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      isResizing = true;
+      currentHandle = handle.classList;
+      startX = e.clientX;
+      startY = e.clientY;
+      startWidth = element.offsetWidth;
+      startHeight = element.offsetHeight;
+      startLeft = element.offsetLeft;
+      startTop = element.offsetTop;
+
+      document.addEventListener('mousemove', handleResize);
+      document.addEventListener('mouseup', stopResize);
+    });
+  });
+
+  function handleResize(e) {
+    if (!isResizing) return;
+
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+
+    if (currentHandle.contains('se')) {
+      // Southeast corner: resize width and height
+      element.style.width = Math.max(200, startWidth + deltaX) + 'px';
+      element.style.height = Math.max(150, startHeight + deltaY) + 'px';
+    } else if (currentHandle.contains('s')) {
+      // South edge: resize height only
+      element.style.height = Math.max(150, startHeight + deltaY) + 'px';
+    } else if (currentHandle.contains('e')) {
+      // East edge: resize width only
+      element.style.width = Math.max(200, startWidth + deltaX) + 'px';
+    }
+  }
+
+  function stopResize() {
+    isResizing = false;
+    currentHandle = null;
+    document.removeEventListener('mousemove', handleResize);
+    document.removeEventListener('mouseup', stopResize);
+  }
+}
+
+// Apply to all windows
+makeResizable(document.getElementById('welcome'));
+makeResizable(document.getElementById('notes'));
+makeResizable(document.getElementById('coffee'));
+makeResizable(document.getElementById('calc'));
+makeResizable(document.getElementById('settings'));

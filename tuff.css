@@ -1,0 +1,32 @@
+.resizeHandle {
+  position: absolute;
+  background-color: transparent;
+}
+
+.resizeHandle.se {
+  bottom: 0;
+  right: 0;
+  width: 16px;
+  height: 16px;
+  cursor: se-resize;
+  border-bottom-right-radius: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top: none;
+  border-left: none;
+}
+
+.resizeHandle.s {
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  cursor: s-resize;
+}
+
+.resizeHandle.e {
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 4px;
+  cursor: e-resize;
+}
