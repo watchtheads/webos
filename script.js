@@ -91,8 +91,16 @@ function openWindow(element) {
   }
 }
 
+function minimizeWindow(element) {
+  element.style.display = "none";
+}
+
 var welcomeScreenClose = document.querySelector("#welcomeclose");
 var welcomeScreenOpen = document.querySelector("#welcomeopen");
+var welcomeScreenMinimize = document.querySelector("#welcomeminimize");
+welcomeScreenMinimize.addEventListener("click", function() {
+  minimizeWindow(welcomeScreen);
+});
 
 welcomeScreenClose.addEventListener("click", function() {
   closeWindow(welcomeScreen);
@@ -114,6 +122,12 @@ var notesScreenClose = document.querySelector("#notesclose");
 notesScreenClose.addEventListener("click", function() {
   closeWindow(notesScreen);
 });
+
+var notesScreenMinimize = document.querySelector("#notesminimize");
+notesScreenMinimize.addEventListener("click", function() {
+  minimizeWindow(notesScreen);
+});
+
 
 notesScreen.addEventListener("mousedown", function() {
   bringToFront(notesScreen);
@@ -185,6 +199,11 @@ var newCoffeeBtn = document.querySelector("#newCoffeeBtn");
 coffeeScreenClose.addEventListener("click", function() {
   closeWindow(coffeeScreen);
 });
+var coffeeScreenMinimize = document.querySelector("#coffeeminimize");
+coffeeScreenMinimize.addEventListener("click", function() {
+  minimizeWindow(coffeeScreen);
+});
+
 
 coffeeScreen.addEventListener("mousedown", function() {
   bringToFront(coffeeScreen);
@@ -197,11 +216,15 @@ newCoffeeBtn.addEventListener("click", function() {
 dragElement(document.querySelector("#calc"));
 
 var calcScreen = document.querySelector("#calc");
-var calcClose = document.querySelector("#calcclose");
+var calcClose = document.querySelector("#calculatorclose");
 var calcDisplay = document.querySelector("#calcDisplay");
 
 calcClose.addEventListener("click", function() {
   closeWindow(calcScreen);
+});
+var calcScreenMinimize = document.querySelector("#calculatorminimize");
+calcScreenMinimize.addEventListener("click", function() {
+  minimizeWindow(calcScreen);
 });
 
 calcScreen.addEventListener("mousedown", function() {
