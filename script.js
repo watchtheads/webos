@@ -90,10 +90,45 @@ notesScreen.addEventListener("mousedown", function() {
   bringToFront(notesScreen);
 });
 
-var addNoteBtn = document.querySelector("#addNoteBtn");
+var notes = [
+  { title: "Welcome", content: "Start typing your notes here..." }
+];
+var currentNoteIndex = 0;
+
+var notesList = document.querySelector("#notesList");
 var notesContent = document.querySelector("#notesContent");
+var addNoteBtn = document.querySelector("#addNoteBtn");
+
+function renderNotesList() {
+  notesList.innerHTML = "";
+  for (let i = 0; i < notes.length; i++) {
+    var item = document.createElement("p");
+    item.textContent = notes[i].title;
+    item.style.margin = "4px 0";
+    item.style.cursor = "pointer";
+    item.style.color = i === currentNoteIndex ? "#4ea1ff" : "#fff";
+    item.addEventListener("click", function() {
+      selectNote(i);
+    });
+    notesList.appendChild(item);
+  }
+}
+
+function selectNote(index) {
+  notes[currentNoteIndex].content = notesContent.innerHTML;
+  currentNoteIndex = index;
+  notesContent.innerHTML = notes[currentNoteIndex].content;
+  renderNotesList();
+}
 
 addNoteBtn.addEventListener("click", function() {
+  notes[currentNoteIndex].content = notesContent.innerHTML;
+  notes.push({ title: "New Note " + notes.length, content: "" });
+  currentNoteIndex = notes.length - 1;
   notesContent.innerHTML = "";
+  renderNotesList();
   notesContent.focus();
 });
+
+renderNotesList();
+notesContent.innerHTML = notes[currentNoteIndex].content;

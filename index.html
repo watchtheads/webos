@@ -9,7 +9,7 @@
 
     <div id="desktopApps" style="padding-top: 64px; padding-left: 16px;">
       <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="closeWindow(welcomeScreen); openWindow(notesScreen);">
-        <img src="./notes.png" style="width: 64px; height: 64px; border-radius: 16px;">
+        <img src="./notes.webp" style="width: 64px; height: 64px; border-radius: 16px;">
         <p style="margin: 0px; color: #fff;">Tuff notes</p>
       </div>
     </div>
@@ -25,12 +25,13 @@
       <a href="https://www.instagram.com/starthackclub/">starthackclub's instagram</a>
     </div>
 
-    <div id="notes" style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+    <div id="notes" style="border: solid; width: 400px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <p id="notesheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
       <p style="cursor: pointer;" id="notesclose">Close</p>
       <h2 style="margin: 4px;">My Notes</h2>
-      <div id="notesContent" contenteditable="true" style="background-color: #fff; color: #000; border-radius: 8px; padding: 12px; min-height: 150px; overflow-y: auto;">
-        Start typing your notes here...
+      <div style="display: flex; gap: 8px;">
+        <div id="notesList" style="width: 120px; background-color: #1c1c1c; border-radius: 8px; padding: 8px; overflow-y: auto; max-height: 200px;"></div>
+        <div id="notesContent" contenteditable="true" style="flex: 1; background-color: #fff; color: #000; border-radius: 8px; padding: 12px; min-height: 200px; overflow-y: auto;"></div>
       </div>
       <button id="addNoteBtn" style="margin-top: 8px; cursor: pointer;">+ New Note</button>
     </div>
