@@ -3,27 +3,19 @@
 <body style="background-color: #5F9EA0; color: #ffffff; font-family: 'Trattatello', Helvetica, fantasy; background-image: url(./cherrybl.gif); background-size: cover; height: 100vh;">
 
     <div style="position: absolute; top: 0; width: 100%; display: flex; justify-content: space-between; backdrop-filter: blur(10px); background-color: rgba(0, 0, 0, 0.25); color: #fff; box-sizing: border-box; padding: 8px 16px;">
-      <p id="osName" style="margin: 0;">TuffOS <span style="font-size: 7px;">it's always time to eat cereal</span></p>
-      <p id="timeElement" style="margin: 0;">Time</p>
-    </div>
+  <p id="welcomeopen" style="margin: 0; cursor: pointer;">TuffOS <span style="font-size: 12px;">it's always time to eat cereal</span></p>
+  <p id="timeElement" style="margin: 0;">Time</p>
+</div>
 
-    <div style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
-      <h1 style="margin: 4px;"> Welcome to my OS </h1>
-      <h2 style="margin: 4px;"> Introduction </h2>
-      <h3 style="margin: 4px;"> I like cereal </h3>
-      <p> Hello world</p>
-      <img style="width: 167px; height: 167px; object-fit: cover; border-radius: 50%;" src="./idk.jpg" />
-      <a href="https://www.instagram.com/starthackclub/">starthackclub's instagram</a>
-    </div>
-
-    <script>
-      function updateTime() {
-        var currentTime = new Date().toLocaleString();
-        var timeText = document.querySelector("#timeElement");
-        timeText.textContent = currentTime;
-      }
-      setInterval(updateTime, 1000);
-    </script>
-
+    <div id="welcome" style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+  <p id="welcomeheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p> <p style="cursor: pointer;" id="welcomeclose">Close</p>
+  <h1 style="margin: 4px;"> Welcome to my OS </h1>
+  <h2 style="margin: 4px;"> Introduction </h2>
+  <h3 style="margin: 4px;"> I like cereal </h3>
+  <p> Hello world</p>
+  <img style="width: 167px; height: 167px; object-fit: cover; border-radius: 50%;" src="./idk.jpg" />
+  <a href="https://www.instagram.com/starthackclub/">starthackclub's instagram</a>
+</div>
+<script src="script.js"></script>
   </body>
 </html>
