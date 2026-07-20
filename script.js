@@ -480,3 +480,26 @@ bgUploadZone.addEventListener("drop", function(e) {
     reader.readAsDataURL(e.dataTransfer.files[0]);
   }
 });
+var contextMenu = document.querySelector("#contextMenu");
+
+document.body.addEventListener("contextmenu", function(e) {
+  e.preventDefault();
+  contextMenu.style.display = "block";
+  contextMenu.style.top = e.pageY + "px";
+  contextMenu.style.left = e.pageX + "px";
+});
+
+document.body.addEventListener("click", function() {
+  contextMenu.style.display = "none";
+});
+
+document.querySelectorAll(".contextMenuItem").forEach(function(item) {
+  item.addEventListener("click", function() {
+    var action = item.dataset.action;
+    if (action === "notes") openWindow(notesScreen);
+    if (action === "coffee") openWindow(coffeeScreen);
+    if (action === "settings") openWindow(settingsScreen);
+    if (action === "refresh") location.reload();
+    contextMenu.style.display = "none";
+  });
+});

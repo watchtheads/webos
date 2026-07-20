@@ -1,5 +1,18 @@
 <!DOCTYPE html>
 <html>
+  <head>
+<style>
+.contextMenuItem {
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 14px;
+}
+.contextMenuItem:hover {
+  background-color: rgba(255,255,255,0.1);
+}
+</style>
+</head>
 <body style="background-color: #5F9EA0; color: #ffffff; font-family: 'Trattatello', Helvetica, fantasy; background-image: url(./cherrybl.gif); background-size: cover; height: 100vh;">
 
     <div style="position: absolute; top: 0; width: 100%; display: flex; justify-content: space-between; backdrop-filter: blur(10px); background-color: rgba(0, 0, 0, 0.25); color: #fff; box-sizing: border-box; padding: 8px 16px;">
@@ -132,7 +145,15 @@
   <div id="dockMinimizedApps" style="display: flex; gap: 12px;"></div>
 </div>
 
-    <script src="script.js"></script>
+<div id="contextMenu" style="display: none; position: absolute; background-color: #2b2b2b; color: #fff; border-radius: 8px; padding: 6px; z-index: 99999; box-shadow: 0 4px 12px rgba(0,0,0,0.4); min-width: 160px;">
+  <div class="contextMenuItem" data-action="notes">📝 Open Notes</div>
+  <div class="contextMenuItem" data-action="coffee">☕ Open Coffee</div>
+  <div class="contextMenuItem" data-action="settings">⚙️ Open Settings</div>
+  <div style="height: 1px; background-color: rgba(255,255,255,0.15); margin: 4px 0;"></div>
+  <div class="contextMenuItem" data-action="refresh">🔄 Refresh Desktop</div>
+</div>
+
+<script src="script.js"></script>
 
 </body>
 </html>
