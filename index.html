@@ -25,14 +25,16 @@
     </div>
 
     <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(settingsScreen);">
-  <img src="./settings.webp" style="width: 64px; height: 64px; border-radius: 16px;">
-  <p style="margin: 0px; color: #fff;">Settings</p>
-</div>
+      <img src="./settings.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+      <p style="margin: 0px; color: #fff;">Settings</p>
+    </div>
 
     <div id="welcome" style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column;">
-      <p id="welcomeheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
-      <p style="cursor: pointer;" id="welcomeclose">Close</p>
-      <p style="cursor: pointer;" id="welcomeminimize">Minimize</p>
+      <div id="welcomeheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
+        <div id="welcomeclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="welcomeminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="welcomefullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+      </div>
       <h1 style="margin: 4px;"> Welcome to my OS </h1>
       <h2 style="margin: 4px;"> Introduction </h2>
       <h3 style="margin: 4px;"> I like cereal </h3>
@@ -42,9 +44,11 @@
     </div>
 
     <div id="notes" style="border: solid; width: 400px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
-      <p id="notesheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
-      <p style="cursor: pointer;" id="notesclose">Close</p>
-      <p style="cursor: pointer;" id="notesminimize">Minimize</p>
+      <div id="notesheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
+        <div id="notesclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="notesminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="notesfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+      </div>
       <h2 style="margin: 4px;">My Notes</h2>
       <div style="display: flex; gap: 8px;">
         <div id="notesList" style="width: 120px; background-color: #1c1c1c; border-radius: 8px; padding: 8px; overflow-y: auto; max-height: 200px;"></div>
@@ -54,9 +58,11 @@
     </div>
 
     <div id="coffee" style="border: solid; width: 320px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center;">
-      <p id="coffeeheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold; align-self: flex-start;">⠿ Drag me</p>
-      <p style="cursor: pointer;" id="coffeeclose">Close</p>
-      <p style="cursor: pointer;" id="coffeeminimize">Minimize</p>
+      <div id="coffeeheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0; align-self: flex-start;">
+        <div id="coffeeclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="coffeeminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="coffeefullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+      </div>
       <h2 style="margin: 4px;">☕ Random Coffee</h2>
       <img id="coffeeImg" src="https://coffee.alexflipnote.dev/random" style="width: 250px; height: 250px; object-fit: cover; border-radius: 12px;" />
       <button id="newCoffeeBtn" style="margin-top: 12px; cursor: pointer;">Get New Coffee ☕</button>
@@ -64,9 +70,11 @@
     </div>
 
     <div id="calc" style="border: solid; width: 220px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
-      <p id="calcheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
-      <p style="cursor: pointer;" id="calculatorclose">Close</p>
-      <p style="cursor: pointer;" id="calculatorminimize">Minimize</p>
+      <div id="calcheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
+        <div id="calculatorclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="calculatorminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="calculatorfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+      </div>
       <input id="calcDisplay" type="text" readonly style="width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 8px; font-size: 18px; text-align: right; border-radius: 8px; border: none;" value="0" />
       <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
         <button class="calcBtn" data-val="7">7</button>
@@ -89,25 +97,34 @@
       </div>
     </div>
 
-    <div id="settings" style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
-  <p id="settingsheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
-  <p style="cursor: pointer;" id="settingsclose">Close</p>
-  <p style="cursor: pointer;" id="settingsminimize">Minimize</p>
-  <h2 style="margin: 4px;">⚙️ Settings</h2>
+    <div id="settings" style="border: solid; width: 320px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+      <div id="settingsheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
+        <div id="settingsclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="settingsminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="settingsfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+      </div>
+      <h2 style="margin: 4px;">⚙️ Settings</h2>
 
-  <p style="margin: 8px 0 4px 0; font-weight: bold;">Background</p>
-  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-    <img class="bgOption" data-bg="cherrybl.gif" src="./cherrybl.gif" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
-    <img class="bgOption" data-bg="idk.jpg" src="./idk.jpg" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
-  </div>
+      <p style="margin: 8px 0 4px 0; font-weight: bold;">Background</p>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+        <img class="bgOption" data-bg="cherrybl.gif" src="./cherrybl.gif" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
+        <img class="bgOption" data-bg="idk.jpg" src="./idk.jpg" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
+        <button id="uploadBgBtn" style="cursor: pointer; height: 40px;">+ Custom</button>
+        <input id="bgFileInput" type="file" accept="image/*" style="display: none;" />
+      </div>
 
-  <p style="margin: 12px 0 4px 0; font-weight: bold;">Theme</p>
-  <div style="display: flex; gap: 8px;">
-    <button class="themeOption" data-theme="#5F9EA0">Teal</button>
-    <button class="themeOption" data-theme="#8B5E3C">Brown</button>
-    <button class="themeOption" data-theme="#4B0082">Purple</button>
-  </div>
-</div>
+      <div id="bgUploadZone" style="display: none; margin-top: 8px; padding: 16px; border: 2px dashed #888; border-radius: 8px; text-align: center; font-size: 13px; color: #ccc; cursor: pointer;">
+        Paste an image link, click to browse, or drag & drop a photo here
+        <input id="bgUrlInput" type="text" placeholder="Paste image URL..." style="width: 100%; box-sizing: border-box; margin-top: 8px; padding: 6px; border-radius: 6px; border: none;" />
+      </div>
+
+      <p style="margin: 12px 0 4px 0; font-weight: bold;">Theme</p>
+      <div style="display: flex; gap: 8px;">
+        <button class="themeOption" data-theme="#5F9EA0">Teal</button>
+        <button class="themeOption" data-theme="#8B5E3C">Brown</button>
+        <button class="themeOption" data-theme="#4B0082">Purple</button>
+      </div>
+    </div>
 
     <div id="taskbar" style="position: absolute; bottom: 0; left: 0; width: 100%; display: flex; gap: 8px; backdrop-filter: blur(10px); background-color: rgba(0, 0, 0, 0.25); color: #fff; box-sizing: border-box; padding: 8px 16px; z-index: 9999;">
     </div>

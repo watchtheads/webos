@@ -95,15 +95,46 @@ function minimizeWindow(element) {
   element.style.display = "none";
 }
 
+function toggleFullscreen(element) {
+  if (element.dataset.fullscreen === "true") {
+    element.style.width = element.dataset.prevWidth;
+    element.style.top = "50%";
+    element.style.left = "50%";
+    element.style.transform = "translate(-50%, -50%)";
+    element.dataset.fullscreen = "false";
+  } else {
+    element.dataset.prevWidth = element.style.width;
+    element.style.width = "90vw";
+    element.style.top = "5vh";
+    element.style.left = "5vw";
+    element.style.transform = "none";
+    element.dataset.fullscreen = "true";
+  }
+}
+
+function toggleApp(screen) {
+  if (screen.style.display === "flex") {
+    closeWindow(screen);
+  } else {
+    openWindow(screen);
+  }
+}
+
 var welcomeScreenClose = document.querySelector("#welcomeclose");
 var welcomeScreenOpen = document.querySelector("#welcomeopen");
 var welcomeScreenMinimize = document.querySelector("#welcomeminimize");
+var welcomeScreenFullscreen = document.querySelector("#welcomefullscreen");
+
+welcomeScreenClose.addEventListener("click", function() {
+  closeWindow(welcomeScreen);
+});
+
 welcomeScreenMinimize.addEventListener("click", function() {
   minimizeWindow(welcomeScreen);
 });
 
-welcomeScreenClose.addEventListener("click", function() {
-  closeWindow(welcomeScreen);
+welcomeScreenFullscreen.addEventListener("click", function() {
+  toggleFullscreen(welcomeScreen);
 });
 
 welcomeScreenOpen.addEventListener("click", function() {
@@ -118,16 +149,20 @@ dragElement(document.querySelector("#notes"));
 
 var notesScreen = document.querySelector("#notes");
 var notesScreenClose = document.querySelector("#notesclose");
+var notesScreenMinimize = document.querySelector("#notesminimize");
+var notesScreenFullscreen = document.querySelector("#notesfullscreen");
 
 notesScreenClose.addEventListener("click", function() {
   closeWindow(notesScreen);
 });
 
-var notesScreenMinimize = document.querySelector("#notesminimize");
 notesScreenMinimize.addEventListener("click", function() {
   minimizeWindow(notesScreen);
 });
 
+notesScreenFullscreen.addEventListener("click", function() {
+  toggleFullscreen(notesScreen);
+});
 
 notesScreen.addEventListener("mousedown", function() {
   bringToFront(notesScreen);
@@ -195,15 +230,20 @@ var coffeeScreen = document.querySelector("#coffee");
 var coffeeScreenClose = document.querySelector("#coffeeclose");
 var coffeeImg = document.querySelector("#coffeeImg");
 var newCoffeeBtn = document.querySelector("#newCoffeeBtn");
+var coffeeScreenMinimize = document.querySelector("#coffeeminimize");
+var coffeeScreenFullscreen = document.querySelector("#coffeefullscreen");
 
 coffeeScreenClose.addEventListener("click", function() {
   closeWindow(coffeeScreen);
 });
-var coffeeScreenMinimize = document.querySelector("#coffeeminimize");
+
 coffeeScreenMinimize.addEventListener("click", function() {
   minimizeWindow(coffeeScreen);
 });
 
+coffeeScreenFullscreen.addEventListener("click", function() {
+  toggleFullscreen(coffeeScreen);
+});
 
 coffeeScreen.addEventListener("mousedown", function() {
   bringToFront(coffeeScreen);
@@ -218,13 +258,19 @@ dragElement(document.querySelector("#calc"));
 var calcScreen = document.querySelector("#calc");
 var calcClose = document.querySelector("#calculatorclose");
 var calcDisplay = document.querySelector("#calcDisplay");
+var calcScreenMinimize = document.querySelector("#calculatorminimize");
+var calcScreenFullscreen = document.querySelector("#calculatorfullscreen");
 
 calcClose.addEventListener("click", function() {
   closeWindow(calcScreen);
 });
-var calcScreenMinimize = document.querySelector("#calculatorminimize");
+
 calcScreenMinimize.addEventListener("click", function() {
   minimizeWindow(calcScreen);
+});
+
+calcScreenFullscreen.addEventListener("click", function() {
+  toggleFullscreen(calcScreen);
 });
 
 calcScreen.addEventListener("mousedown", function() {
@@ -259,6 +305,7 @@ dragElement(document.querySelector("#settings"));
 var settingsScreen = document.querySelector("#settings");
 var settingsClose = document.querySelector("#settingsclose");
 var settingsMinimize = document.querySelector("#settingsminimize");
+var settingsFullscreen = document.querySelector("#settingsfullscreen");
 
 settingsClose.addEventListener("click", function() {
   closeWindow(settingsScreen);
@@ -266,6 +313,10 @@ settingsClose.addEventListener("click", function() {
 
 settingsMinimize.addEventListener("click", function() {
   minimizeWindow(settingsScreen);
+});
+
+settingsFullscreen.addEventListener("click", function() {
+  toggleFullscreen(settingsScreen);
 });
 
 settingsScreen.addEventListener("mousedown", function() {
@@ -286,15 +337,54 @@ themeOptions.forEach(function(btn) {
   });
 });
 
-function toggleApp(screen) {
-  if (screen.style.display === "flex") {
-    closeWindow(screen);
-  } else {
-    closeWindow(welcomeScreen);
-    closeWindow(notesScreen);
-    closeWindow(coffeeScreen);
-    closeWindow(calcScreen);
-    closeWindow(settingsScreen);
-    openWindow(screen);
+var uploadBgBtn = document.querySelector("#uploadBgBtn");
+var bgUploadZone = document.querySelector("#bgUploadZone");
+var bgFileInput = document.querySelector("#bgFileInput");
+var bgUrlInput = document.querySelector("#bgUrlInput");
+
+uploadBgBtn.addEventListener("click", function() {
+  bgUploadZone.style.display = bgUploadZone.style.display === "none" ? "block" : "none";
+});
+
+bgUploadZone.addEventListener("click", function(e) {
+  if (e.target === bgUploadZone) {
+    bgFileInput.click();
   }
-}
+});
+
+bgFileInput.addEventListener("change", function() {
+  if (bgFileInput.files && bgFileInput.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(event) {
+      document.body.style.backgroundImage = "url(" + event.target.result + ")";
+    };
+    reader.readAsDataURL(bgFileInput.files[0]);
+  }
+});
+
+bgUrlInput.addEventListener("keydown", function(e) {
+  if (e.key === "Enter" && bgUrlInput.value.trim() !== "") {
+    document.body.style.backgroundImage = "url(" + bgUrlInput.value.trim() + ")";
+  }
+});
+
+bgUploadZone.addEventListener("dragover", function(e) {
+  e.preventDefault();
+  bgUploadZone.style.borderColor = "#4ea1ff";
+});
+
+bgUploadZone.addEventListener("dragleave", function() {
+  bgUploadZone.style.borderColor = "#888";
+});
+
+bgUploadZone.addEventListener("drop", function(e) {
+  e.preventDefault();
+  bgUploadZone.style.borderColor = "#888";
+  if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+    var reader = new FileReader();
+    reader.onload = function(event) {
+      document.body.style.backgroundImage = "url(" + event.target.result + ")";
+    };
+    reader.readAsDataURL(e.dataTransfer.files[0]);
+  }
+});
