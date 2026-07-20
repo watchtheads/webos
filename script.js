@@ -53,89 +53,6 @@ function bringToFront(element) {
   element.style.zIndex = biggestIndex;
 }
 
-var taskbar = document.querySelector("#taskbar");
-var openApps = {};
-
-var appIcons = {
-  welcome: "./idk.jpg",
-  notes: "./notes.webp",
-  coffee: "./coffee.webp",
-  calc: "./calculator.webp",
-  settings: "./settings.webp"
-};
-
-function addToTaskbar(id, label, screen) {
-  var wrapper = document.createElement("div");
-  wrapper.style.display = "flex";
-  wrapper.style.flexDirection = "column";
-  wrapper.style.alignItems = "center";
-  wrapper.style.cursor = "pointer";
-  wrapper.dataset.taskId = id;
-
-  var icon = document.createElement("img");
-  icon.src = appIcons[id] || "./notes.webp";
-  icon.style.width = "40px";
-  icon.style.height = "40px";
-  icon.style.borderRadius = "10px";
-  icon.style.objectFit = "cover";
-
-  var dot = document.createElement("div");
-  dot.style.width = "5px";
-  dot.style.height = "5px";
-  dot.style.borderRadius = "50%";
-  dot.style.backgroundColor = "#fff";
-  dot.style.marginTop = "3px";
-
-  wrapper.appendChild(icon);
-  wrapper.appendChild(dot);
-
-  wrapper.addEventListener("click", function() {
-    if (screen.style.display === "flex") {
-      bringToFront(screen);
-    } else {
-      openWindow(screen);
-    }
-  });
-
-  taskbar.appendChild(wrapper);
-  openApps[id] = wrapper;
-}
-
-function closeWindow(element) {
-  element.style.display = "none";
-  removeFromTaskbar(element.id);
-}
-
-function openWindow(element) {
-  element.style.display = "flex";
-  bringToFront(element);
-  if (!openApps[element.id]) {
-    addToTaskbar(element.id, element.id.charAt(0).toUpperCase() + element.id.slice(1), element);
-  }
-}
-
-function minimizeWindow(element) {
-  var rect = element.getBoundingClientRect();
-  var taskbarRect = taskbar.getBoundingClientRect();
-
-  element.style.transition = "transform 0.35s ease-in, opacity 0.35s ease-in";
-  element.style.transformOrigin = "top left";
-
-  var targetX = (taskbarRect.left + taskbarRect.width / 2) - (rect.left + rect.width / 2);
-  var targetY = taskbarRect.top - rect.top;
-
-  element.style.transform = element.style.transform.replace(/translate\([^)]*\)/, "") +
-    " translate(" + targetX + "px, " + targetY + "px) scale(0.05)";
-  element.style.opacity = "0";
-
-  setTimeout(function() {
-    element.style.display = "none";
-    element.style.transition = "";
-    element.style.opacity = "1";
-    element.style.transform = element.style.transform.replace(/translate\([^)]*\)\s*scale\([^)]*\)/, "");
-  }, 350);
-}
-
 function toggleFullscreen(element) {
   if (element.dataset.fullscreen === "true") {
     element.style.width = element.dataset.prevWidth;
@@ -153,6 +70,135 @@ function toggleFullscreen(element) {
   }
 }
 
+var appScreens = {};
+
+var taskbar = document.querySelector("#taskbar");
+var dockOpenApps = document.querySelector("#dockOpenApps");
+var dockMinimizedApps = document.querySelector("#dockMinimizedApps");
+var dockDivider = document.querySelector("#dockDivider");
+var dockIcons = {};
+
+var appIcons = {
+  welcome: "./idk.jpg",
+  notes: "./notes.webp",
+  coffee: "./coffee.webp",
+  calc: "./calculator.webp",
+  settings: "./settings.webp"
+};
+
+function createDockIcon(id) {
+  var wrapper = document.createElement("div");
+  wrapper.style.display = "flex";
+  wrapper.style.flexDirection = "column";
+  wrapper.style.alignItems = "center";
+  wrapper.style.cursor = "pointer";
+
+  var icon = document.createElement("img");
+  icon.src = appIcons[id] || "./notes.webp";
+  icon.style.width = "40px";
+  icon.style.height = "40px";
+  icon.style.borderRadius = "10px";
+  icon.style.objectFit = "cover";
+
+  var dot = document.createElement("div");
+  dot.style.width = "5px";
+  dot.style.height = "5px";
+  dot.style.borderRadius = "50%";
+  dot.style.backgroundColor = "#fff";
+  dot.style.marginTop = "3px";
+  dot.style.visibility = "hidden";
+  dot.className = "dockDot";
+
+  wrapper.appendChild(icon);
+  wrapper.appendChild(dot);
+
+  wrapper.addEventListener("click", function() {
+    var screen = appScreens[id];
+    if (!screen) return;
+    if (screen.style.display === "flex") {
+      bringToFront(screen);
+    } else {
+      openWindow(screen);
+    }
+  });
+
+  dockIcons[id] = wrapper;
+  return wrapper;
+}
+
+for (var appId in appIcons) {
+  dockOpenApps.appendChild(createDockIcon(appId));
+}
+
+function refreshDockDot(element) {
+  var dot = dockIcons[element.id].querySelector(".dockDot");
+  dot.style.visibility = element.style.display === "flex" ? "visible" : "hidden";
+}
+
+function moveToMinimizedDock(id) {
+  dockMinimizedApps.appendChild(dockIcons[id]);
+  updateDivider();
+}
+
+function moveToOpenDock(id) {
+  dockOpenApps.appendChild(dockIcons[id]);
+  updateDivider();
+}
+
+function updateDivider() {
+  dockDivider.style.display = dockMinimizedApps.children.length > 0 ? "block" : "none";
+}
+
+function closeWindow(element) {
+  element.style.display = "none";
+  refreshDockDot(element);
+  moveToOpenDock(element.id);
+}
+
+function openWindow(element) {
+  element.style.display = "flex";
+  bringToFront(element);
+  refreshDockDot(element);
+  moveToOpenDock(element.id);
+}
+
+function minimizeWindow(element) {
+  var iconWrapper = dockIcons[element.id];
+  var iconRect = iconWrapper.getBoundingClientRect();
+  var winRect = element.getBoundingClientRect();
+
+  var clone = element.cloneNode(true);
+  clone.removeAttribute("id");
+  clone.style.position = "fixed";
+  clone.style.top = winRect.top + "px";
+  clone.style.left = winRect.left + "px";
+  clone.style.width = winRect.width + "px";
+  clone.style.height = winRect.height + "px";
+  clone.style.margin = "0";
+  clone.style.transform = "none";
+  clone.style.zIndex = "99999";
+  clone.style.transition = "all 0.35s cubic-bezier(0.4, 0, 0.2, 1)";
+  clone.style.pointerEvents = "none";
+  document.body.appendChild(clone);
+
+  element.style.display = "none";
+
+  requestAnimationFrame(function() {
+    clone.style.top = (iconRect.top + iconRect.height / 2) + "px";
+    clone.style.left = (iconRect.left + iconRect.width / 2) + "px";
+    clone.style.width = "10px";
+    clone.style.height = "10px";
+    clone.style.opacity = "0";
+  });
+
+  setTimeout(function() {
+    clone.remove();
+  }, 350);
+
+  refreshDockDot(element);
+  moveToMinimizedDock(element.id);
+}
+
 function toggleApp(screen) {
   if (screen.style.display === "flex") {
     closeWindow(screen);
@@ -165,6 +211,7 @@ var welcomeScreenClose = document.querySelector("#welcomeclose");
 var welcomeScreenOpen = document.querySelector("#welcomeopen");
 var welcomeScreenMinimize = document.querySelector("#welcomeminimize");
 var welcomeScreenFullscreen = document.querySelector("#welcomefullscreen");
+appScreens["welcome"] = welcomeScreen;
 
 welcomeScreenClose.addEventListener("click", function() {
   closeWindow(welcomeScreen);
@@ -192,6 +239,7 @@ var notesScreen = document.querySelector("#notes");
 var notesScreenClose = document.querySelector("#notesclose");
 var notesScreenMinimize = document.querySelector("#notesminimize");
 var notesScreenFullscreen = document.querySelector("#notesfullscreen");
+appScreens["notes"] = notesScreen;
 
 notesScreenClose.addEventListener("click", function() {
   closeWindow(notesScreen);
@@ -273,6 +321,7 @@ var coffeeImg = document.querySelector("#coffeeImg");
 var newCoffeeBtn = document.querySelector("#newCoffeeBtn");
 var coffeeScreenMinimize = document.querySelector("#coffeeminimize");
 var coffeeScreenFullscreen = document.querySelector("#coffeefullscreen");
+appScreens["coffee"] = coffeeScreen;
 
 coffeeScreenClose.addEventListener("click", function() {
   closeWindow(coffeeScreen);
@@ -301,6 +350,7 @@ var calcClose = document.querySelector("#calculatorclose");
 var calcDisplay = document.querySelector("#calcDisplay");
 var calcScreenMinimize = document.querySelector("#calculatorminimize");
 var calcScreenFullscreen = document.querySelector("#calculatorfullscreen");
+appScreens["calc"] = calcScreen;
 
 calcClose.addEventListener("click", function() {
   closeWindow(calcScreen);
@@ -347,6 +397,7 @@ var settingsScreen = document.querySelector("#settings");
 var settingsClose = document.querySelector("#settingsclose");
 var settingsMinimize = document.querySelector("#settingsminimize");
 var settingsFullscreen = document.querySelector("#settingsfullscreen");
+appScreens["settings"] = settingsScreen;
 
 settingsClose.addEventListener("click", function() {
   closeWindow(settingsScreen);
