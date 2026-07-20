@@ -38,12 +38,21 @@ function dragElement(element) {
     document.onmousemove = null;
   }
 }
+
 function updateTime() {
   var currentTime = new Date().toLocaleString();
   var timeText = document.querySelector("#timeElement");
   timeText.textContent = currentTime;
 }
 setInterval(updateTime, 1000);
+
+var biggestIndex = 1;
+
+function bringToFront(element) {
+  biggestIndex++;
+  element.style.zIndex = biggestIndex;
+}
+
 function closeWindow(element) {
   element.style.display = "none";
 }
@@ -63,6 +72,11 @@ welcomeScreenClose.addEventListener("click", function() {
 welcomeScreenOpen.addEventListener("click", function() {
   openWindow(welcomeScreen);
 });
+
+welcomeScreen.addEventListener("mousedown", function() {
+  bringToFront(welcomeScreen);
+});
+
 dragElement(document.querySelector("#notes"));
 
 var notesScreen = document.querySelector("#notes");
@@ -71,17 +85,15 @@ var notesScreenClose = document.querySelector("#notesclose");
 notesScreenClose.addEventListener("click", function() {
   closeWindow(notesScreen);
 });
-var biggestIndex = 1;
-
-function bringToFront(element) {
-  biggestIndex++;
-  element.style.zIndex = biggestIndex;
-}
-
-welcomeScreen.addEventListener("mousedown", function() {
-  bringToFront(welcomeScreen);
-});
 
 notesScreen.addEventListener("mousedown", function() {
   bringToFront(notesScreen);
+});
+
+var addNoteBtn = document.querySelector("#addNoteBtn");
+var notesContent = document.querySelector("#notesContent");
+
+addNoteBtn.addEventListener("click", function() {
+  notesContent.innerHTML = "";
+  notesContent.focus();
 });
