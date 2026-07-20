@@ -56,26 +56,49 @@ function bringToFront(element) {
 var taskbar = document.querySelector("#taskbar");
 var openApps = {};
 
+var appIcons = {
+  welcome: "./idk.jpg",
+  notes: "./notes.webp",
+  coffee: "./coffee.webp",
+  calc: "./calculator.webp",
+  settings: "./settings.webp"
+};
+
 function addToTaskbar(id, label, screen) {
-  var btn = document.createElement("button");
-  btn.textContent = label;
-  btn.style.cursor = "pointer";
-  btn.addEventListener("click", function() {
+  var wrapper = document.createElement("div");
+  wrapper.style.display = "flex";
+  wrapper.style.flexDirection = "column";
+  wrapper.style.alignItems = "center";
+  wrapper.style.cursor = "pointer";
+  wrapper.dataset.taskId = id;
+
+  var icon = document.createElement("img");
+  icon.src = appIcons[id] || "./notes.webp";
+  icon.style.width = "40px";
+  icon.style.height = "40px";
+  icon.style.borderRadius = "10px";
+  icon.style.objectFit = "cover";
+
+  var dot = document.createElement("div");
+  dot.style.width = "5px";
+  dot.style.height = "5px";
+  dot.style.borderRadius = "50%";
+  dot.style.backgroundColor = "#fff";
+  dot.style.marginTop = "3px";
+
+  wrapper.appendChild(icon);
+  wrapper.appendChild(dot);
+
+  wrapper.addEventListener("click", function() {
     if (screen.style.display === "flex") {
       bringToFront(screen);
     } else {
       openWindow(screen);
     }
   });
-  taskbar.appendChild(btn);
-  openApps[id] = btn;
-}
 
-function removeFromTaskbar(id) {
-  if (openApps[id]) {
-    openApps[id].remove();
-    delete openApps[id];
-  }
+  taskbar.appendChild(wrapper);
+  openApps[id] = wrapper;
 }
 
 function closeWindow(element) {
@@ -92,7 +115,25 @@ function openWindow(element) {
 }
 
 function minimizeWindow(element) {
-  element.style.display = "none";
+  var rect = element.getBoundingClientRect();
+  var taskbarRect = taskbar.getBoundingClientRect();
+
+  element.style.transition = "transform 0.35s ease-in, opacity 0.35s ease-in";
+  element.style.transformOrigin = "top left";
+
+  var targetX = (taskbarRect.left + taskbarRect.width / 2) - (rect.left + rect.width / 2);
+  var targetY = taskbarRect.top - rect.top;
+
+  element.style.transform = element.style.transform.replace(/translate\([^)]*\)/, "") +
+    " translate(" + targetX + "px, " + targetY + "px) scale(0.05)";
+  element.style.opacity = "0";
+
+  setTimeout(function() {
+    element.style.display = "none";
+    element.style.transition = "";
+    element.style.opacity = "1";
+    element.style.transform = element.style.transform.replace(/translate\([^)]*\)\s*scale\([^)]*\)/, "");
+  }, 350);
 }
 
 function toggleFullscreen(element) {
