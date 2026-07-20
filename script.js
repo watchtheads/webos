@@ -53,13 +53,42 @@ function bringToFront(element) {
   element.style.zIndex = biggestIndex;
 }
 
+var taskbar = document.querySelector("#taskbar");
+var openApps = {};
+
+function addToTaskbar(id, label, screen) {
+  var btn = document.createElement("button");
+  btn.textContent = label;
+  btn.style.cursor = "pointer";
+  btn.addEventListener("click", function() {
+    if (screen.style.display === "flex") {
+      bringToFront(screen);
+    } else {
+      openWindow(screen);
+    }
+  });
+  taskbar.appendChild(btn);
+  openApps[id] = btn;
+}
+
+function removeFromTaskbar(id) {
+  if (openApps[id]) {
+    openApps[id].remove();
+    delete openApps[id];
+  }
+}
+
 function closeWindow(element) {
   element.style.display = "none";
+  removeFromTaskbar(element.id);
 }
 
 function openWindow(element) {
   element.style.display = "flex";
   bringToFront(element);
+  if (!openApps[element.id]) {
+    addToTaskbar(element.id, element.id.charAt(0).toUpperCase() + element.id.slice(1), element);
+  }
 }
 
 var welcomeScreenClose = document.querySelector("#welcomeclose");
@@ -202,54 +231,6 @@ document.querySelector("#calcClear").addEventListener("click", function() {
   calcDisplay.value = "0";
 });
 
-dragElement(document.querySelector("#weather"));
-
-var weatherScreen = document.querySelector("#weather");
-var weatherClose = document.querySelector("#weatherclose");
-var weatherCityInput = document.querySelector("#weatherCityInput");
-var weatherSearchBtn = document.querySelector("#weatherSearchBtn");
-var weatherResult = document.querySelector("#weatherResult");
-
-weatherClose.addEventListener("click", function() {
-  closeWindow(weatherScreen);
-});
-
-weatherScreen.addEventListener("mousedown", function() {
-  bringToFront(weatherScreen);
-});
-
-function getWeather(city) {
-  weatherResult.innerHTML = "Loading...";
-  fetch("https://corsproxy.io/?url=" + encodeURIComponent("https://wttr.in/" + city + "?format=j1"))
-    .then(function(response) {
-      return response.json();
-    })
-    .then(function(data) {
-      if (!data.current_condition) {
-        weatherResult.innerHTML = "City not found, try again.";
-        return;
-      }
-      var current = data.current_condition[0];
-      weatherResult.innerHTML = `
-        <p style="margin: 4px; font-size: 32px;">${current.temp_C}°C</p>
-        <p style="margin: 4px;">${current.weatherDesc[0].value}</p>
-        <p style="margin: 4px; font-size: 12px;">Feels like ${current.FeelsLikeC}°C</p>
-      `;
-    })
-    .catch(function(error) {
-      weatherResult.innerHTML = "Couldn't get weather, try again.";
-      console.log(error);
-    });
-}
-
-weatherSearchBtn.addEventListener("click", function() {
-  if (weatherCityInput.value.trim() !== "") {
-    getWeather(weatherCityInput.value.trim());
-  }
-});
-
-getWeather("Atlanta");
-
 function toggleApp(screen) {
   if (screen.style.display === "flex") {
     closeWindow(screen);
@@ -258,7 +239,6 @@ function toggleApp(screen) {
     closeWindow(notesScreen);
     closeWindow(coffeeScreen);
     closeWindow(calcScreen);
-    closeWindow(weatherScreen);
     openWindow(screen);
   }
 }
