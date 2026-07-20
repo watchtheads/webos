@@ -145,6 +145,7 @@ notesContent.addEventListener("blur", function() {
 
 renderNotesList();
 notesContent.innerHTML = notes[currentNoteIndex].content;
+
 dragElement(document.querySelector("#coffee"));
 
 var coffeeScreen = document.querySelector("#coffee");
@@ -163,6 +164,7 @@ coffeeScreen.addEventListener("mousedown", function() {
 newCoffeeBtn.addEventListener("click", function() {
   coffeeImg.src = "https://coffee.alexflipnote.dev/random?" + new Date().getTime();
 });
+
 dragElement(document.querySelector("#calc"));
 
 var calcScreen = document.querySelector("#calc");
@@ -199,6 +201,7 @@ document.querySelector("#calcEquals").addEventListener("click", function() {
 document.querySelector("#calcClear").addEventListener("click", function() {
   calcDisplay.value = "0";
 });
+
 dragElement(document.querySelector("#weather"));
 
 var weatherScreen = document.querySelector("#weather");
@@ -217,7 +220,7 @@ weatherScreen.addEventListener("mousedown", function() {
 
 function getWeather(city) {
   weatherResult.innerHTML = "Loading...";
-  fetch("https://wttr.in/" + encodeURIComponent(city) + "?format=j1")
+  fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://wttr.in/" + city + "?format=j1"))
     .then(function(response) {
       return response.json();
     })
@@ -235,7 +238,27 @@ function getWeather(city) {
     })
     .catch(function(error) {
       weatherResult.innerHTML = "Couldn't get weather, try again.";
+      console.log(error);
     });
 }
 
+weatherSearchBtn.addEventListener("click", function() {
+  if (weatherCityInput.value.trim() !== "") {
+    getWeather(weatherCityInput.value.trim());
+  }
+});
+
 getWeather("Atlanta");
+
+function toggleApp(screen) {
+  if (screen.style.display === "flex") {
+    closeWindow(screen);
+  } else {
+    closeWindow(welcomeScreen);
+    closeWindow(notesScreen);
+    closeWindow(coffeeScreen);
+    closeWindow(calcScreen);
+    closeWindow(weatherScreen);
+    openWindow(screen);
+  }
+}
