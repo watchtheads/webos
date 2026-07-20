@@ -115,9 +115,10 @@ function renderNotesList() {
 }
 
 function selectNote(index) {
-  notes[currentNoteIndex].content = notesContent.innerHTML;
+  var savedContent = notesContent.innerHTML === "Start typing your notes here..." ? "" : notesContent.innerHTML;
+  notes[currentNoteIndex].content = savedContent;
   currentNoteIndex = index;
-  notesContent.innerHTML = notes[currentNoteIndex].content;
+  notesContent.innerHTML = notes[currentNoteIndex].content || "Start typing your notes here...";
   renderNotesList();
 }
 
@@ -128,6 +129,18 @@ addNoteBtn.addEventListener("click", function() {
   notesContent.innerHTML = "";
   renderNotesList();
   notesContent.focus();
+});
+
+notesContent.addEventListener("focus", function() {
+  if (notesContent.innerHTML === "Start typing your notes here...") {
+    notesContent.innerHTML = "";
+  }
+});
+
+notesContent.addEventListener("blur", function() {
+  if (notesContent.innerHTML.trim() === "") {
+    notesContent.innerHTML = "Start typing your notes here...";
+  }
 });
 
 renderNotesList();
@@ -150,3 +163,79 @@ coffeeScreen.addEventListener("mousedown", function() {
 newCoffeeBtn.addEventListener("click", function() {
   coffeeImg.src = "https://coffee.alexflipnote.dev/random?" + new Date().getTime();
 });
+dragElement(document.querySelector("#calc"));
+
+var calcScreen = document.querySelector("#calc");
+var calcClose = document.querySelector("#calcclose");
+var calcDisplay = document.querySelector("#calcDisplay");
+
+calcClose.addEventListener("click", function() {
+  closeWindow(calcScreen);
+});
+
+calcScreen.addEventListener("mousedown", function() {
+  bringToFront(calcScreen);
+});
+
+var calcButtons = document.querySelectorAll(".calcBtn");
+calcButtons.forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    if (calcDisplay.value === "0") {
+      calcDisplay.value = btn.dataset.val;
+    } else {
+      calcDisplay.value += btn.dataset.val;
+    }
+  });
+});
+
+document.querySelector("#calcEquals").addEventListener("click", function() {
+  try {
+    calcDisplay.value = eval(calcDisplay.value);
+  } catch (e) {
+    calcDisplay.value = "Error";
+  }
+});
+
+document.querySelector("#calcClear").addEventListener("click", function() {
+  calcDisplay.value = "0";
+});
+dragElement(document.querySelector("#weather"));
+
+var weatherScreen = document.querySelector("#weather");
+var weatherClose = document.querySelector("#weatherclose");
+var weatherCityInput = document.querySelector("#weatherCityInput");
+var weatherSearchBtn = document.querySelector("#weatherSearchBtn");
+var weatherResult = document.querySelector("#weatherResult");
+
+weatherClose.addEventListener("click", function() {
+  closeWindow(weatherScreen);
+});
+
+weatherScreen.addEventListener("mousedown", function() {
+  bringToFront(weatherScreen);
+});
+
+function getWeather(city) {
+  weatherResult.innerHTML = "Loading...";
+  fetch("https://wttr.in/" + encodeURIComponent(city) + "?format=j1")
+    .then(function(response) {
+      return response.json();
+    })
+    .then(function(data) {
+      if (!data.current_condition) {
+        weatherResult.innerHTML = "City not found, try again.";
+        return;
+      }
+      var current = data.current_condition[0];
+      weatherResult.innerHTML = `
+        <p style="margin: 4px; font-size: 32px;">${current.temp_C}°C</p>
+        <p style="margin: 4px;">${current.weatherDesc[0].value}</p>
+        <p style="margin: 4px; font-size: 12px;">Feels like ${current.FeelsLikeC}°C</p>
+      `;
+    })
+    .catch(function(error) {
+      weatherResult.innerHTML = "Couldn't get weather, try again.";
+    });
+}
+
+getWeather("Atlanta");

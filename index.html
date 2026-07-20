@@ -19,6 +19,16 @@
       <p style="margin: 0px; color: #fff;">Coffee</p>
     </div>
 
+    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="closeWindow(welcomeScreen); closeWindow(notesScreen); closeWindow(coffeeScreen); openWindow(calcScreen);">
+  <img src="./calc.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+  <p style="margin: 0px; color: #fff;">Calc short for calculator</p>
+</div>
+
+<div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="closeWindow(welcomeScreen); closeWindow(notesScreen); closeWindow(coffeeScreen); closeWindow(calcScreen); openWindow(weatherScreen);">
+  <img src="./weather.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+  <p style="margin: 0px; color: #fff;">Weather</p>
+</div>
+
     <div id="welcome" style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column;">
       <p id="welcomeheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
       <p style="cursor: pointer;" id="welcomeclose">Close</p>
@@ -46,7 +56,42 @@
   <p style="cursor: pointer; align-self: flex-start;" id="coffeeclose">Close</p>
   <h2 style="margin: 4px;">☕ Random Coffee</h2>
   <img id="coffeeImg" src="https://coffee.alexflipnote.dev/random" style="width: 250px; height: 250px; object-fit: cover; border-radius: 12px;" />
-  <button id="newCoffeeBtn" style="margin-top: 12px; cursor: pointer;">Get New Coffee ☕</button>
+<button id="newCoffeeBtn" style="margin-top: 12px; cursor: pointer;">Get New Coffee ☕</button>
+<p style="font-size: 11px; color: #aaa; margin: 8px 0 0 0;">(kinda delayed, give it a sec)</p>
+</div>
+
+<div id="calc" style="border: solid; width: 220px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+  <p id="calcheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
+  <p style="cursor: pointer;" id="calcclose">Close</p>
+  <input id="calcDisplay" type="text" readonly style="width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 8px; font-size: 18px; text-align: right; border-radius: 8px; border: none;" value="0" />
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+    <button class="calcBtn" data-val="7">7</button>
+    <button class="calcBtn" data-val="8">8</button>
+    <button class="calcBtn" data-val="9">9</button>
+    <button class="calcBtn" data-val="/">÷</button>
+    <button class="calcBtn" data-val="4">4</button>
+    <button class="calcBtn" data-val="5">5</button>
+    <button class="calcBtn" data-val="6">6</button>
+    <button class="calcBtn" data-val="*">×</button>
+    <button class="calcBtn" data-val="1">1</button>
+    <button class="calcBtn" data-val="2">2</button>
+    <button class="calcBtn" data-val="3">3</button>
+    <button class="calcBtn" data-val="-">−</button>
+    <button class="calcBtn" data-val="0">0</button>
+    <button class="calcBtn" data-val=".">.</button>
+    <button id="calcEquals" data-val="=">=</button>
+    <button class="calcBtn" data-val="+">+</button>
+    <button id="calcClear" style="grid-column: span 4;">Clear</button>
+  </div>
+</div>
+
+<div id="weather" style="border: solid; width: 280px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center;">
+  <p id="weatherheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold; align-self: flex-start;">⠿ Drag me</p>
+  <p style="cursor: pointer; align-self: flex-start;" id="weatherclose">Close</p>
+  <h2 style="margin: 4px;">🌤️ Weather</h2>
+  <input id="weatherCityInput" type="text" placeholder="Enter a city" style="width: 100%; box-sizing: border-box; padding: 8px; border-radius: 8px; border: none; margin-bottom: 8px;" />
+  <button id="weatherSearchBtn" style="cursor: pointer; margin-bottom: 12px;">Search</button>
+  <div id="weatherResult" style="text-align: center;"></div>
 </div>
 
     <script src="script.js"></script>
