@@ -220,7 +220,7 @@ weatherScreen.addEventListener("mousedown", function() {
 
 function getWeather(city) {
   weatherResult.innerHTML = "Loading...";
-  fetch("https://api.allorigins.win/raw?url=" + encodeURIComponent("https://wttr.in/" + city + "?format=j1"))
+  fetch("https://corsproxy.io/?url=" + encodeURIComponent("https://wttr.in/" + city + "?format=j1"))
     .then(function(response) {
       return response.json();
     })
