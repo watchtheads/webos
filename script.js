@@ -262,6 +262,38 @@ function toggleApp(screen) {
     closeWindow(notesScreen);
     closeWindow(coffeeScreen);
     closeWindow(calcScreen);
+    closeWindow(settingsScreen);
     openWindow(screen);
   }
 }
+dragElement(document.querySelector("#settings"));
+
+var settingsScreen = document.querySelector("#settings");
+var settingsClose = document.querySelector("#settingsclose");
+var settingsMinimize = document.querySelector("#settingsminimize");
+
+settingsClose.addEventListener("click", function() {
+  closeWindow(settingsScreen);
+});
+
+settingsMinimize.addEventListener("click", function() {
+  minimizeWindow(settingsScreen);
+});
+
+settingsScreen.addEventListener("mousedown", function() {
+  bringToFront(settingsScreen);
+});
+
+var bgOptions = document.querySelectorAll(".bgOption");
+bgOptions.forEach(function(img) {
+  img.addEventListener("click", function() {
+    document.body.style.backgroundImage = "url(./" + img.dataset.bg + ")";
+  });
+});
+
+var themeOptions = document.querySelectorAll(".themeOption");
+themeOptions.forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    document.body.style.backgroundColor = btn.dataset.theme;
+  });
+});

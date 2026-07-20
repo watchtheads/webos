@@ -24,6 +24,11 @@
       <p style="margin: 0px; color: #fff;">Calc short for calculator</p>
     </div>
 
+    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(settingsScreen);">
+  <img src="./settings.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+  <p style="margin: 0px; color: #fff;">Settings</p>
+</div>
+
     <div id="welcome" style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column;">
       <p id="welcomeheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
       <p style="cursor: pointer;" id="welcomeclose">Close</p>
@@ -83,6 +88,26 @@
         <button id="calcClear" style="grid-column: span 4;">Clear</button>
       </div>
     </div>
+
+    <div id="settings" style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+  <p id="settingsheader" style="cursor: grab; user-select: none; margin: 0 0 8px 0; font-weight: bold;">⠿ Drag me</p>
+  <p style="cursor: pointer;" id="settingsclose">Close</p>
+  <p style="cursor: pointer;" id="settingsminimize">Minimize</p>
+  <h2 style="margin: 4px;">⚙️ Settings</h2>
+
+  <p style="margin: 8px 0 4px 0; font-weight: bold;">Background</p>
+  <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+    <img class="bgOption" data-bg="cherrybl.gif" src="./cherrybl.gif" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
+    <img class="bgOption" data-bg="idk.jpg" src="./idk.jpg" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
+  </div>
+
+  <p style="margin: 12px 0 4px 0; font-weight: bold;">Theme</p>
+  <div style="display: flex; gap: 8px;">
+    <button class="themeOption" data-theme="#5F9EA0">Teal</button>
+    <button class="themeOption" data-theme="#8B5E3C">Brown</button>
+    <button class="themeOption" data-theme="#4B0082">Purple</button>
+  </div>
+</div>
 
     <div id="taskbar" style="position: absolute; bottom: 0; left: 0; width: 100%; display: flex; gap: 8px; backdrop-filter: blur(10px); background-color: rgba(0, 0, 0, 0.25); color: #fff; box-sizing: border-box; padding: 8px 16px; z-index: 9999;">
     </div>
