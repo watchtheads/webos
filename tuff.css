@@ -30,3 +30,8 @@
   width: 4px;
   cursor: e-resize;
 }
+.resizeHandle {
+  position: absolute;
+  background-color: transparent;
+  z-index: 1000;
+}

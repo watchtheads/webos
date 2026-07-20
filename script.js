@@ -527,25 +527,25 @@ function makeResizable(element) {
   let startY = 0;
   let startWidth = 0;
   let startHeight = 0;
-  let startLeft = 0;
-  let startTop = 0;
 
   handles.forEach(handle => {
-    handle.addEventListener('mousedown', (e) => {
-      e.preventDefault();
-      isResizing = true;
-      currentHandle = handle.classList;
-      startX = e.clientX;
-      startY = e.clientY;
-      startWidth = element.offsetWidth;
-      startHeight = element.offsetHeight;
-      startLeft = element.offsetLeft;
-      startTop = element.offsetTop;
-
-      document.addEventListener('mousemove', handleResize);
-      document.addEventListener('mouseup', stopResize);
-    });
+    handle.addEventListener('mousedown', startResize);
   });
+
+  function startResize(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    isResizing = true;
+    currentHandle = e.target.classList;
+    startX = e.clientX;
+    startY = e.clientY;
+    startWidth = element.offsetWidth;
+    startHeight = element.offsetHeight;
+
+    document.addEventListener('mousemove', handleResize);
+    document.addEventListener('mouseup', stopResize);
+  }
 
   function handleResize(e) {
     if (!isResizing) return;
@@ -554,14 +554,11 @@ function makeResizable(element) {
     const deltaY = e.clientY - startY;
 
     if (currentHandle.contains('se')) {
-      // Southeast corner: resize width and height
       element.style.width = Math.max(200, startWidth + deltaX) + 'px';
       element.style.height = Math.max(150, startHeight + deltaY) + 'px';
     } else if (currentHandle.contains('s')) {
-      // South edge: resize height only
       element.style.height = Math.max(150, startHeight + deltaY) + 'px';
     } else if (currentHandle.contains('e')) {
-      // East edge: resize width only
       element.style.width = Math.max(200, startWidth + deltaX) + 'px';
     }
   }
