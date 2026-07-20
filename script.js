@@ -132,3 +132,21 @@ addNoteBtn.addEventListener("click", function() {
 
 renderNotesList();
 notesContent.innerHTML = notes[currentNoteIndex].content;
+dragElement(document.querySelector("#coffee"));
+
+var coffeeScreen = document.querySelector("#coffee");
+var coffeeScreenClose = document.querySelector("#coffeeclose");
+var coffeeImg = document.querySelector("#coffeeImg");
+var newCoffeeBtn = document.querySelector("#newCoffeeBtn");
+
+coffeeScreenClose.addEventListener("click", function() {
+  closeWindow(coffeeScreen);
+});
+
+coffeeScreen.addEventListener("mousedown", function() {
+  bringToFront(coffeeScreen);
+});
+
+newCoffeeBtn.addEventListener("click", function() {
+  coffeeImg.src = "https://coffee.alexflipnote.dev/random?" + new Date().getTime();
+});
