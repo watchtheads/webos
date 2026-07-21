@@ -11,6 +11,16 @@
 .contextMenuItem:hover {
   background-color: rgba(255,255,255,0.1);
 }
+.resizeHandle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.4) 50%);
+  border-bottom-right-radius: 16px;
+}
 </style>
 </head>
 <body style="background-color: #5F9EA0; color: #ffffff; font-family: 'Trattatello', Helvetica, fantasy; background-image: url(./cherrybl.gif); background-size: cover; height: 100vh;">
@@ -28,29 +38,34 @@
       <p id="timeElement" style="margin: 0;">Time</p>
     </div>
 
-    <div id="desktopApps" style="padding-top: 64px; padding-left: 16px;">
+    <div id="desktopApps" style="padding-top: 64px; padding-left: 16px; display: flex; flex-wrap: wrap;">
       <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(notesScreen);">
         <img src="./notes.webp" style="width: 64px; height: 64px; border-radius: 16px;">
         <p style="margin: 0px; color: #fff;">Tuff notes</p>
       </div>
+
+      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(coffeeScreen);">
+        <img src="./coffee.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+        <p style="margin: 0px; color: #fff;">Coffee</p>
+      </div>
+
+      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(calcScreen);">
+        <img src="./calculator.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+        <p style="margin: 0px; color: #fff;">Calc short for calculator</p>
+      </div>
+
+      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(settingsScreen);">
+        <img src="./settings.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+        <p style="margin: 0px; color: #fff;">Settings</p>
+      </div>
+
+      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(browserScreen);">
+        <img src="./browser.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+        <p style="margin: 0px; color: #fff;">Browser</p>
+      </div>
     </div>
 
-    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(coffeeScreen);">
-      <img src="./coffee.webp" style="width: 64px; height: 64px; border-radius: 16px;">
-      <p style="margin: 0px; color: #fff;">Coffee</p>
-    </div>
-
-    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(calcScreen);">
-      <img src="./calculator.webp" style="width: 64px; height: 64px; border-radius: 16px;">
-      <p style="margin: 0px; color: #fff;">Calc short for calculator</p>
-    </div>
-
-    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(settingsScreen);">
-      <img src="./settings.webp" style="width: 64px; height: 64px; border-radius: 16px;">
-      <p style="margin: 0px; color: #fff;">Settings</p>
-    </div>
-
-    <div id="welcome" style="border: solid; width: 300px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column;">
+    <div id="welcome" style="border: solid; width: 300px; height: 420px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column;">
       <div id="welcomeheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
         <div id="welcomeclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="welcomeminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -62,23 +77,25 @@
       <p> Hello world</p>
       <img style="width: 167px; height: 167px; object-fit: cover; border-radius: 50%;" src="./idk.jpg" />
       <a href="https://www.instagram.com/starthackclub/">starthackclub's instagram</a>
+      <div class="resizeHandle"></div>
     </div>
 
-    <div id="notes" style="border: solid; width: 400px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+    <div id="notes" style="border: solid; width: 400px; height: 300px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="notesheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
         <div id="notesclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="notesminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
         <div id="notesfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
       </div>
       <h2 style="margin: 4px;">My Notes</h2>
-      <div style="display: flex; gap: 8px;">
-        <div id="notesList" style="width: 120px; background-color: #1c1c1c; border-radius: 8px; padding: 8px; overflow-y: auto; max-height: 200px;"></div>
-        <div id="notesContent" contenteditable="true" style="flex: 1; background-color: #fff; color: #000; border-radius: 8px; padding: 12px; min-height: 200px; overflow-y: auto;"></div>
+      <div style="display: flex; gap: 8px; flex: 1; min-height: 0;">
+        <div id="notesList" style="width: 120px; background-color: #1c1c1c; border-radius: 8px; padding: 8px; overflow-y: auto;"></div>
+        <div id="notesContent" contenteditable="true" style="flex: 1; background-color: #fff; color: #000; border-radius: 8px; padding: 12px; overflow-y: auto;"></div>
       </div>
       <button id="addNoteBtn" style="margin-top: 8px; cursor: pointer;">+ New Note</button>
+      <div class="resizeHandle"></div>
     </div>
 
-    <div id="coffee" style="border: solid; width: 320px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center;">
+    <div id="coffee" style="border: solid; width: 320px; height: 400px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center;">
       <div id="coffeeheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0; align-self: flex-start;">
         <div id="coffeeclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="coffeeminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -88,9 +105,10 @@
       <img id="coffeeImg" src="https://coffee.alexflipnote.dev/random" style="width: 250px; height: 250px; object-fit: cover; border-radius: 12px;" />
       <button id="newCoffeeBtn" style="margin-top: 12px; cursor: pointer;">Get New Coffee ☕</button>
       <p style="font-size: 11px; color: #aaa; margin: 8px 0 0 0;">(kinda delayed, give it a sec)</p>
+      <div class="resizeHandle"></div>
     </div>
 
-    <div id="calc" style="border: solid; width: 220px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+    <div id="calc" style="border: solid; width: 220px; height: 320px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="calcheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
         <div id="calculatorclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="calculatorminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -116,9 +134,10 @@
         <button class="calcBtn" data-val="+">+</button>
         <button id="calcClear" style="grid-column: span 4;">Clear</button>
       </div>
+      <div class="resizeHandle"></div>
     </div>
 
-    <div id="settings" style="border: solid; width: 320px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+    <div id="settings" style="border: solid; width: 320px; height: 360px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="settingsheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
         <div id="settingsclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="settingsminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -145,6 +164,22 @@
         <button class="themeOption" data-theme="#8B5E3C">Brown</button>
         <button class="themeOption" data-theme="#4B0082">Purple</button>
       </div>
+      <div class="resizeHandle"></div>
+    </div>
+
+    <div id="browser" style="border: solid; width: 500px; height: 400px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+      <div id="browserheader" style="display: flex; align-items: center; gap: 6px; cursor: grab; user-select: none; margin: 0 0 8px 0;">
+        <div id="browserclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="browserminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="browserfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+      </div>
+      <div style="display: flex; gap: 6px; margin-bottom: 8px;">
+        <input id="browserUrl" type="text" placeholder="https://example.com" style="flex: 1; padding: 6px 8px; border-radius: 6px; border: none;" />
+        <button id="browserGo" style="cursor: pointer;">Go</button>
+      </div>
+      <div id="browserError" style="display:none; color:#ff8080; font-size:12px; margin-bottom:6px;">This site may have refused to load in an embedded window (many sites block embedding via X-Frame-Options/CSP). Try another URL, or open it in a real tab.</div>
+      <iframe id="browserFrame" style="flex: 1; width: 100%; border: none; border-radius: 8px; background:#fff;"></iframe>
+      <div class="resizeHandle"></div>
     </div>
 
     <div id="taskbar" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; backdrop-filter: blur(10px); background-color: rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 8px 12px; z-index: 9999;">
@@ -157,6 +192,7 @@
   <div class="contextMenuItem" data-action="notes">📝 Open Notes</div>
   <div class="contextMenuItem" data-action="coffee">☕ Open Coffee</div>
   <div class="contextMenuItem" data-action="settings">⚙️ Open Settings</div>
+  <div class="contextMenuItem" data-action="browser">🌐 Open Browser</div>
   <div style="height: 1px; background-color: rgba(255,255,255,0.15); margin: 4px 0;"></div>
   <div class="contextMenuItem" data-action="refresh">🔄 Refresh Desktop</div>
 </div>

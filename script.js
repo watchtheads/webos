@@ -1,11 +1,41 @@
 var welcomeScreen = document.querySelector("#welcome");
-dragElement(document.getElementById("welcome"));
 
+// ---------- Snap preview overlay (shared across all windows) ----------
+var snapPreview = document.createElement("div");
+snapPreview.id = "snapPreview";
+snapPreview.style.position = "fixed";
+snapPreview.style.background = "rgba(78,161,255,0.25)";
+snapPreview.style.border = "2px solid #4ea1ff";
+snapPreview.style.borderRadius = "8px";
+snapPreview.style.zIndex = "999998";
+snapPreview.style.display = "none";
+snapPreview.style.pointerEvents = "none";
+document.body.appendChild(snapPreview);
+
+var SNAP_ZONE = 24; // px from edge that triggers a snap
+
+function getSnapZone(x, y) {
+  var vw = window.innerWidth;
+  var vh = window.innerHeight;
+  if (x < SNAP_ZONE) {
+    return { top: 0, left: 0, width: vw / 2, height: vh };
+  }
+  if (x > vw - SNAP_ZONE) {
+    return { top: 0, left: vw / 2, width: vw / 2, height: vh };
+  }
+  if (y < SNAP_ZONE) {
+    return { top: 0, left: 0, width: vw, height: vh };
+  }
+  return null;
+}
+
+// ---------- Dragging (with snapping) ----------
 function dragElement(element) {
   var initialX = 0;
   var initialY = 0;
   var currentX = 0;
   var currentY = 0;
+  var pendingSnap = null;
 
   if (document.getElementById(element.id + "header")) {
     document.getElementById(element.id + "header").onmousedown = startDragging;
@@ -18,11 +48,19 @@ function dragElement(element) {
     e.preventDefault();
     initialX = e.clientX;
     initialY = e.clientY;
+
+    // normalize to fixed top/left px so drag math is consistent,
+    // whether the window is centered via transform or already snapped
+    var rect = element.getBoundingClientRect();
+    element.style.transform = "none";
+    element.style.top = rect.top + "px";
+    element.style.left = rect.left + "px";
+
     document.onmouseup = stopDragging;
-    document.onmousemove = dragElement;
+    document.onmousemove = doDrag;
   }
 
-  function dragElement(e) {
+  function doDrag(e) {
     e = e || window.event;
     e.preventDefault();
     currentX = initialX - e.clientX;
@@ -31,12 +69,71 @@ function dragElement(element) {
     initialY = e.clientY;
     element.style.top = (element.offsetTop - currentY) + "px";
     element.style.left = (element.offsetLeft - currentX) + "px";
+
+    var zone = getSnapZone(e.clientX, e.clientY);
+    pendingSnap = zone;
+    if (zone) {
+      snapPreview.style.display = "block";
+      snapPreview.style.top = zone.top + "px";
+      snapPreview.style.left = zone.left + "px";
+      snapPreview.style.width = zone.width + "px";
+      snapPreview.style.height = zone.height + "px";
+    } else {
+      snapPreview.style.display = "none";
+    }
   }
 
   function stopDragging() {
     document.onmouseup = null;
     document.onmousemove = null;
+    snapPreview.style.display = "none";
+    if (pendingSnap) {
+      element.style.top = pendingSnap.top + "px";
+      element.style.left = pendingSnap.left + "px";
+      element.style.width = pendingSnap.width + "px";
+      element.style.height = pendingSnap.height + "px";
+      pendingSnap = null;
+    }
   }
+}
+
+dragElement(document.getElementById("welcome"));
+
+// ---------- Resizing ----------
+function makeResizable(element) {
+  var handle = element.querySelector(".resizeHandle");
+  if (!handle) return;
+
+  handle.addEventListener("mousedown", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    bringToFront(element);
+
+    var startX = e.clientX;
+    var startY = e.clientY;
+    var startWidth = element.offsetWidth;
+    var startHeight = element.offsetHeight;
+
+    var rect = element.getBoundingClientRect();
+    element.style.transform = "none";
+    element.style.top = rect.top + "px";
+    element.style.left = rect.left + "px";
+
+    function onMouseMove(e) {
+      var newWidth = Math.max(180, startWidth + (e.clientX - startX));
+      var newHeight = Math.max(140, startHeight + (e.clientY - startY));
+      element.style.width = newWidth + "px";
+      element.style.height = newHeight + "px";
+    }
+
+    function onMouseUp() {
+      document.removeEventListener("mousemove", onMouseMove);
+      document.removeEventListener("mouseup", onMouseUp);
+    }
+
+    document.addEventListener("mousemove", onMouseMove);
+    document.addEventListener("mouseup", onMouseUp);
+  });
 }
 
 function updateTime() {
@@ -56,13 +153,16 @@ function bringToFront(element) {
 function toggleFullscreen(element) {
   if (element.dataset.fullscreen === "true") {
     element.style.width = element.dataset.prevWidth;
+    element.style.height = element.dataset.prevHeight || "";
     element.style.top = "50%";
     element.style.left = "50%";
     element.style.transform = "translate(-50%, -50%)";
     element.dataset.fullscreen = "false";
   } else {
     element.dataset.prevWidth = element.style.width;
+    element.dataset.prevHeight = element.style.height;
     element.style.width = "90vw";
+    element.style.height = "90vh";
     element.style.top = "5vh";
     element.style.left = "5vw";
     element.style.transform = "none";
@@ -83,7 +183,8 @@ var appIcons = {
   notes: "./notes.webp",
   coffee: "./coffee.webp",
   calc: "./calculator.webp",
-  settings: "./settings.webp"
+  settings: "./settings.webp",
+  browser: "./browser.webp"
 };
 
 function createDockIcon(id) {
@@ -480,6 +581,65 @@ bgUploadZone.addEventListener("drop", function(e) {
     reader.readAsDataURL(e.dataTransfer.files[0]);
   }
 });
+
+// ---------- Browser app ----------
+dragElement(document.querySelector("#browser"));
+
+var browserScreen = document.querySelector("#browser");
+var browserClose = document.querySelector("#browserclose");
+var browserMinimize = document.querySelector("#browserminimize");
+var browserFullscreen = document.querySelector("#browserfullscreen");
+var browserUrl = document.querySelector("#browserUrl");
+var browserGo = document.querySelector("#browserGo");
+var browserFrame = document.querySelector("#browserFrame");
+var browserError = document.querySelector("#browserError");
+appScreens["browser"] = browserScreen;
+
+browserClose.addEventListener("click", function() {
+  closeWindow(browserScreen);
+});
+
+browserMinimize.addEventListener("click", function() {
+  minimizeWindow(browserScreen);
+});
+
+browserFullscreen.addEventListener("click", function() {
+  toggleFullscreen(browserScreen);
+});
+
+browserScreen.addEventListener("mousedown", function() {
+  bringToFront(browserScreen);
+});
+
+function loadBrowserUrl() {
+  var val = browserUrl.value.trim();
+  if (!val) return;
+  if (!/^https?:\/\//i.test(val)) {
+    val = "https://" + val;
+  }
+  browserUrl.value = val;
+  browserError.style.display = "none";
+  browserFrame.src = val;
+}
+
+browserGo.addEventListener("click", loadBrowserUrl);
+browserUrl.addEventListener("keydown", function(e) {
+  if (e.key === "Enter") loadBrowserUrl();
+});
+
+// Note: cross-origin iframes can't be introspected by JS, so a blocked
+// embed (X-Frame-Options / CSP) usually just renders blank with no
+// reliable error event. This "load" check is a soft heuristic only.
+browserFrame.addEventListener("load", function() {
+  try {
+    // if this doesn't throw, it's same-origin (rare) — otherwise we can't know much
+    var _ = browserFrame.contentWindow.location.href;
+  } catch (err) {
+    // cross-origin load succeeded, which is the normal/expected case — do nothing
+  }
+});
+
+// ---------- Context menu ----------
 var contextMenu = document.querySelector("#contextMenu");
 
 document.body.addEventListener("contextmenu", function(e) {
@@ -499,10 +659,19 @@ document.querySelectorAll(".contextMenuItem").forEach(function(item) {
     if (action === "notes") openWindow(notesScreen);
     if (action === "coffee") openWindow(coffeeScreen);
     if (action === "settings") openWindow(settingsScreen);
+    if (action === "browser") openWindow(browserScreen);
     if (action === "refresh") location.reload();
     contextMenu.style.display = "none";
   });
 });
+
+// ---------- Wire up resizing for all windows ----------
+["welcome", "notes", "coffee", "calc", "settings", "browser"].forEach(function(id) {
+  var el = document.getElementById(id);
+  if (el) makeResizable(el);
+});
+
+// ---------- Boot screen ----------
 var bootScreen = document.querySelector("#bootScreen");
 var bootBar = document.querySelector("#bootBar");
 
