@@ -49,8 +49,6 @@ function dragElement(element) {
     initialX = e.clientX;
     initialY = e.clientY;
 
-    // normalize to fixed top/left px so drag math is consistent,
-    // whether the window is centered via transform or already snapped
     var rect = element.getBoundingClientRect();
     element.style.transform = "none";
     element.style.top = rect.top + "px";
@@ -627,15 +625,10 @@ browserUrl.addEventListener("keydown", function(e) {
   if (e.key === "Enter") loadBrowserUrl();
 });
 
-// Note: cross-origin iframes can't be introspected by JS, so a blocked
-// embed (X-Frame-Options / CSP) usually just renders blank with no
-// reliable error event. This "load" check is a soft heuristic only.
 browserFrame.addEventListener("load", function() {
   try {
-    // if this doesn't throw, it's same-origin (rare) — otherwise we can't know much
     var _ = browserFrame.contentWindow.location.href;
   } catch (err) {
-    // cross-origin load succeeded, which is the normal/expected case — do nothing
   }
 });
 
