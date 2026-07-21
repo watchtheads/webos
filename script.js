@@ -184,7 +184,7 @@ var appIcons = {
   coffee: "./coffee.webp",
   calc: "./calculator.webp",
   settings: "./settings.webp",
-  browser: "./browser.webp"
+  browser: "./image.webp"
 };
 
 function createDockIcon(id) {
