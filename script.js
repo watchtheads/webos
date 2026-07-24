@@ -188,7 +188,30 @@ var appIcons = {
 
 function createDockIcon(id) {
   var wrapper = document.createElement("div");
-  ...
+  wrapper.style.display = "flex";
+  wrapper.style.flexDirection = "column";
+  wrapper.style.alignItems = "center";
+  wrapper.style.cursor = "pointer";
+
+  var icon = document.createElement("img");
+  icon.src = appIcons[id] || "./notes.webp";
+  icon.style.width = "40px";
+  icon.style.height = "40px";
+  icon.style.borderRadius = "10px";
+  icon.style.objectFit = "cover";
+
+  var dot = document.createElement("div");
+  dot.style.width = "5px";
+  dot.style.height = "5px";
+  dot.style.borderRadius = "50%";
+  dot.style.backgroundColor = "#fff";
+  dot.style.marginTop = "3px";
+  dot.style.visibility = "hidden";
+  dot.className = "dockDot";
+
+  wrapper.appendChild(icon);
+  wrapper.appendChild(dot);
+
   wrapper.addEventListener("click", function() {
     var screen = appScreens[id];
     if (!screen) return;
@@ -196,6 +219,7 @@ function createDockIcon(id) {
       bringToFront(screen);
     } else {
       openWindow(screen);
+      if (id === "photobooth") startCamera();
     }
   });
 
