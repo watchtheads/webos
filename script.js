@@ -182,7 +182,8 @@ var appIcons = {
   coffee: "./coffee.webp",
   calc: "./calculator.webp",
   settings: "./settings.webp",
-  browser: "./image.webp"
+  browser: "./image.webp",
+  photobooth: "./photobooth.webp"
 };
 
 function createDockIcon(id) {
@@ -659,7 +660,7 @@ document.querySelectorAll(".contextMenuItem").forEach(function(item) {
 });
 
 // ---------- Wire up resizing for all windows ----------
-["welcome", "notes", "coffee", "calc", "settings", "browser"].forEach(function(id) {
+["welcome", "notes", "coffee", "calc", "settings", "browser", "photobooth"].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) makeResizable(el);
 });
@@ -681,3 +682,49 @@ setTimeout(function() {
 setTimeout(function() {
   bootScreen.style.display = "none";
 }, 1800);
+dragElement(document.querySelector("#photobooth"));
+
+var photoboothScreen = document.querySelector("#photobooth");
+var photoboothClose = document.querySelector("#photoboothclose");
+var photoboothMinimize = document.querySelector("#photoboothminimize");
+var photoboothFullscreen = document.querySelector("#photoboothfullscreen");
+appScreens["photobooth"] = photoboothScreen;
+
+photoboothClose.addEventListener("click", function () {
+  closeWindow(photoboothScreen);
+});
+photoboothMinimize.addEventListener("click", function () {
+  minimizeWindow(photoboothScreen);
+});
+photoboothFullscreen.addEventListener("click", function () {
+  toggleFullscreen(photoboothScreen);
+});
+photoboothScreen.addEventListener("mousedown", function () {
+  bringToFront(photoboothScreen);
+});
+
+// --- webcam logic ---
+var video = document.querySelector("#videoElement");
+var canvas = document.querySelector("#canvas");
+var ctx = canvas.getContext("2d");
+
+navigator.mediaDevices.getUserMedia({ video: true })
+  .then(function (stream) {
+    video.srcObject = stream;
+  })
+  .catch(function (error) {
+    alert("Couldn't access webcam: " + error.name);
+  });
+
+document.querySelector("#shutterBtn").addEventListener("click", function () {
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  ctx.translate(canvas.width, 0);
+  ctx.scale(-1, 1);
+  ctx.drawImage(video, 0, 0);
+
+  var a = document.createElement("a");
+  a.href = canvas.toDataURL("image/png");
+  a.download = "photo.png";
+  a.click();
+});

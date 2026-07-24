@@ -72,6 +72,12 @@
         <img src="./image.webp" style="width: 64px; height: 64px; border-radius: 16px;">
         <p style="margin: 0px; color: #fff;">Browser</p>
       </div>
+
+    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(welcomeScreen);">
+        <img src="./photobooth.webp" style="width: 64px; height: 64px; border-radius: 16px;">
+        <p style="margin: 0px; color: #fff;">Welcome</p>
+      </div>
+
     </div>
 
     <div id="welcome" style="border: solid; width: 300px; height: 420px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column;">
@@ -206,6 +212,26 @@
   <div class="contextMenuItem" data-action="refresh">🔄 Refresh Desktop</div>
 </div>
 
+<div id="photobooth" style="border: solid; width: 500px; height: 460px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+  <div id="photoboothheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
+    <div id="photoboothclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+    <div id="photoboothminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+    <div id="photoboothfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+  </div>
+
+  <video autoplay playsinline muted id="videoElement" style="width: 100%; flex: 1; object-fit: cover; transform: scaleX(-1); background: #000; border-radius: 8px;"></video>
+
+  <div style="display: flex; align-items: center; padding-top: 8px;">
+    <button>Four</button>
+    <button>Still</button>
+    <button>Movie</button>
+    <button id="shutterBtn" style="width: 40px; height: 40px; border-radius: 50%; background: red; border: none; margin: 0 auto; display: block;"></button>
+    <button id="effectsBtn">Effects</button>
+  </div>
+
+  <canvas id="canvas" style="display:none;"></canvas>
+  <div class="resizeHandle"></div>
+</div>
 <script src="script.js"></script>
 
 </body>
