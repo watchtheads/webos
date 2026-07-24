@@ -149,22 +149,33 @@ function bringToFront(element) {
 }
 
 function toggleFullscreen(element) {
+  var topBar = document.querySelector("#topBar");
+var taskbar = document.querySelector("#taskbar");
+
   if (element.dataset.fullscreen === "true") {
     element.style.width = element.dataset.prevWidth;
     element.style.height = element.dataset.prevHeight || "";
     element.style.top = "50%";
     element.style.left = "50%";
     element.style.transform = "translate(-50%, -50%)";
+    element.style.borderRadius = "16px";
     element.dataset.fullscreen = "false";
+
+    topBar.style.display = "flex";
+    taskbar.style.display = "flex";
   } else {
     element.dataset.prevWidth = element.style.width;
     element.dataset.prevHeight = element.style.height;
-    element.style.width = "90vw";
-    element.style.height = "90vh";
-    element.style.top = "5vh";
-    element.style.left = "5vw";
+    element.style.width = "100vw";
+    element.style.height = "100vh";
+    element.style.top = "0";
+    element.style.left = "0";
     element.style.transform = "none";
+    element.style.borderRadius = "0";
     element.dataset.fullscreen = "true";
+
+    topBar.style.display = "none";
+    taskbar.style.display = "none";
   }
 }
 
