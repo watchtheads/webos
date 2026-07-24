@@ -707,14 +707,28 @@ photoboothScreen.addEventListener("mousedown", function () {
 var video = document.querySelector("#videoElement");
 var canvas = document.querySelector("#canvas");
 var ctx = canvas.getContext("2d");
+var cameraStarted = false;
 
-navigator.mediaDevices.getUserMedia({ video: true })
-  .then(function (stream) {
-    video.srcObject = stream;
-  })
-  .catch(function (error) {
-    alert("Couldn't access webcam: " + error.name);
-  });
+function startCamera() {
+  if (cameraStarted) return;
+  cameraStarted = true;
+
+  navigator.mediaDevices.getUserMedia({ video: true })
+    .then(function (stream) {
+      video.srcObject = stream;
+    })
+    .catch(function (error) {
+      alert("Couldn't access webcam: " + error.name);
+      cameraStarted = false;
+    });
+}
+
+function openPhotobooth() {
+  toggleApp(photoboothScreen);
+  if (photoboothScreen.style.display === "flex") {
+    startCamera();
+  }
+}
 
 document.querySelector("#shutterBtn").addEventListener("click", function () {
   canvas.width = video.videoWidth;
