@@ -57,6 +57,9 @@ function dragElement(element) {
 
   function startDragging(e) {
     e = e || window.event;
+    if (element.dataset.fullscreen === "true") {
+      return;
+    }
     if (e.target.closest('[id$="close"], [id$="minimize"], [id$="fullscreen"]')) {
       return;
     }
