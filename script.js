@@ -45,6 +45,9 @@ function dragElement(element) {
 
   function startDragging(e) {
     e = e || window.event;
+    if (e.target.closest('[id$="close"], [id$="minimize"], [id$="fullscreen"]')) {
+      return;
+    }
     e.preventDefault();
     initialX = e.clientX;
     initialY = e.clientY;
@@ -96,12 +99,6 @@ function dragElement(element) {
 }
 
 dragElement(document.getElementById("welcome"));
-
-document.querySelectorAll('[id$="close"], [id$="minimize"], [id$="fullscreen"]').forEach(function(btn) {
-  btn.addEventListener("mousedown", function(e) {
-    e.stopPropagation();
-  });
-});
 
 // ---------- Resizing ----------
 function makeResizable(element) {
