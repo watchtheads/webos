@@ -57,9 +57,6 @@ function dragElement(element) {
 
   function startDragging(e) {
     e = e || window.event;
-    if (element.dataset.fullscreen === "true") {
-      return;
-    }
     if (e.target.closest('[id$="close"], [id$="minimize"], [id$="fullscreen"]')) {
       return;
     }
@@ -803,6 +800,17 @@ function openPhotobooth() {
     startCamera();
   }
 }
+
+document.querySelectorAll(".photoModeBtn").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    document.querySelectorAll(".photoModeBtn").forEach(function(b) {
+      b.style.background = "transparent";
+      b.querySelector("svg").setAttribute("stroke", "#ccc");
+    });
+    btn.style.background = "#4a4a4a";
+    btn.querySelector("svg").setAttribute("stroke", "#fff");
+  });
+});
 
 document.querySelector("#shutterBtn").addEventListener("click", function () {
   canvas.width = video.videoWidth;
