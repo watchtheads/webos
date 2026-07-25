@@ -801,6 +801,8 @@ function openPhotobooth() {
   }
 }
 
+var currentPhotoMode = "movie";
+
 document.querySelectorAll(".photoModeBtn").forEach(function(btn) {
   btn.addEventListener("click", function() {
     document.querySelectorAll(".photoModeBtn").forEach(function(b) {
@@ -809,18 +811,171 @@ document.querySelectorAll(".photoModeBtn").forEach(function(btn) {
     });
     btn.style.background = "#4a4a4a";
     btn.querySelector("svg").setAttribute("stroke", "#fff");
+    currentPhotoMode = btn.dataset.mode;
   });
 });
 
-document.querySelector("#shutterBtn").addEventListener("click", function () {
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  ctx.translate(canvas.width, 0);
-  ctx.scale(-1, 1);
-  ctx.drawImage(video, 0, 0);
+var countdownOverlay = document.querySelector("#countdownOverlay");
 
+function runCountdown(callback) {
+  var count = 3;
+  countdownOverlay.style.display = "flex";
+  countdownOverlay.textContent = count;
+  var timer = setInterval(function () {
+    count--;
+    if (count > 0) {
+      countdownOverlay.textContent = count;
+    } else {
+      clearInterval(timer);
+      countdownOverlay.style.display = "none";
+      callback();
+    }
+  }, 800);
+}
+
+function captureFrame(targetCanvas) {
+  targetCanvas.width = video.videoWidth;
+  targetCanvas.height = video.videoHeight;
+  var c = targetCanvas.getContext("2d");
+  c.translate(targetCanvas.width, 0);
+  c.scale(-1, 1);
+  c.drawImage(video, 0, 0);
+}
+
+function downloadCanvas(sourceCanvas, filename) {
   var a = document.createElement("a");
-  a.href = canvas.toDataURL("image/png");
-  a.download = "photo.png";
+  a.href = sourceCanvas.toDataURL("image/png");
+  a.download = filename;
   a.click();
+}
+
+function takeStillShot() {
+  captureFrame(canvas);
+  downloadCanvas(canvas, "photo.png");
+}
+
+function takeFourShot() {
+  var shots = [];
+  var shotIndex = 0;
+
+  function takeOneShot() {
+    var shotCanvas = document.createElement("canvas");
+    captureFrame(shotCanvas);
+    shots.push(shotCanvas);
+    shotIndex++;
+    if (shotIndex < 4) {
+      setTimeout(takeOneShot, 800);
+    } else {
+      combineFourShots(shots);
+    }
+  }
+  takeOneShot();
+}
+
+function combineFourShots(shots) {
+  var w = shots[0].width;
+  var h = shots[0].height;
+  var combined = document.createElement("canvas");
+  combined.width = w * 2;
+  combined.height = h * 2;
+  var ctx2 = combined.getContext("2d");
+  ctx2.drawImage(shots[0], 0, 0);
+  ctx2.drawImage(shots[1], w, 0);
+  ctx2.drawImage(shots[2], 0, h);
+  ctx2.drawImage(shots[3], w, h);
+  downloadCanvas(combined, "photo-strip.png");
+}
+
+var mediaRecorder = null;
+var recordedChunks = [];
+var recordTimerInterval = null;
+var recordSeconds = 0;
+var recordTimerEl = document.querySelector("#recordTimer");
+var modeSwitcherEl = document.querySelector("#photoModeSwitcher");
+var shutterBtn = document.querySelector("#shutterBtn");
+
+function formatTime(totalSeconds) {
+  var h = Math.floor(totalSeconds / 3600);
+  var m = Math.floor((totalSeconds % 3600) / 60);
+  var s = totalSeconds % 60;
+  function pad(n) { return n < 10 ? "0" + n : "" + n; }
+  return pad(h) + ":" + pad(m) + ":" + pad(s);
+}
+
+function setShutterToRecordIcon() {
+  shutterBtn.style.background = "#fff";
+  shutterBtn.innerHTML = "";
+  var stopSquare = document.createElement("div");
+  stopSquare.style.width = "16px";
+  stopSquare.style.height = "16px";
+  stopSquare.style.borderRadius = "4px";
+  stopSquare.style.background = "#EC6B5E";
+  shutterBtn.appendChild(stopSquare);
+}
+
+function setShutterToCameraIcon() {
+  shutterBtn.style.background = "red";
+  shutterBtn.innerHTML = "";
+}
+
+function startRecording() {
+  recordedChunks = [];
+  var stream = video.srcObject;
+  mediaRecorder = new MediaRecorder(stream);
+
+  mediaRecorder.ondataavailable = function (e) {
+    if (e.data.size > 0) recordedChunks.push(e.data);
+  };
+
+  mediaRecorder.onstop = function () {
+    var blob = new Blob(recordedChunks, { type: "video/webm" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "recording.webm";
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  mediaRecorder.start();
+
+  recordSeconds = 0;
+  recordTimerEl.textContent = formatTime(recordSeconds);
+  recordTimerInterval = setInterval(function () {
+    recordSeconds++;
+    recordTimerEl.textContent = formatTime(recordSeconds);
+  }, 1000);
+
+  modeSwitcherEl.style.display = "none";
+  recordTimerEl.style.display = "block";
+  setShutterToRecordIcon();
+}
+
+function stopRecording() {
+  if (mediaRecorder && mediaRecorder.state !== "inactive") {
+    mediaRecorder.stop();
+  }
+  clearInterval(recordTimerInterval);
+
+  modeSwitcherEl.style.display = "flex";
+  recordTimerEl.style.display = "none";
+  setShutterToCameraIcon();
+}
+
+shutterBtn.addEventListener("click", function () {
+  if (currentPhotoMode === "movie") {
+    if (mediaRecorder && mediaRecorder.state === "recording") {
+      stopRecording();
+    } else {
+      runCountdown(startRecording);
+    }
+    return;
+  }
+  runCountdown(function () {
+    if (currentPhotoMode === "four") {
+      takeFourShot();
+    } else {
+      takeStillShot();
+    }
+  });
 });

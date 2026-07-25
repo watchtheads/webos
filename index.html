@@ -227,7 +227,12 @@ html, body {
     <div id="photoboothfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
   </div>
 
-  <video autoplay playsinline muted id="videoElement" style="width: 100%; flex: 1; min-height: 0; object-fit: cover; transform: scaleX(-1); background: #000; border-radius: 8px;"></video>
+  <div id="videoWrapper" style="position: relative; width: 100%; flex: 1; min-height: 0;">
+    <video autoplay playsinline muted id="videoElement" style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); background: #000; border-radius: 8px;"></video>
+    <div id="countdownOverlay" style="display:none; position:absolute; inset:0; align-items:center; justify-content:center; font-size:96px; color:#fff; text-shadow:0 0 20px rgba(0,0,0,0.8); font-family: Helvetica, sans-serif; pointer-events:none;"></div>
+  </div>
+
+
 
   <div style="display: flex; align-items: center; padding-top: 8px;">
     <div id="photoModeSwitcher" style="display: flex; align-items: center; background: #1c1c1c; border-radius: 10px; padding: 4px; gap: 2px;">
@@ -243,8 +248,8 @@ html, body {
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
       </button>
     </div>
-    <button id="shutterBtn" style="width: 40px; height: 40px; border-radius: 50%; background: red; border: none; margin: 0 auto; display: block;"></button>
-    <button id="effectsBtn">Effects</button>
+    <div id="recordTimer" style="display:none; color:#ccc; font-size:16px; font-family: Helvetica, Arial, sans-serif; width: 110px;">00:00:00</div>
+    <button id="shutterBtn" style="width: 40px; height: 40px; border-radius: 50%; background: red; border: none; margin: 0 auto; display: flex; align-items:center; justify-content:center;"></button>
   </div>
 
   <canvas id="canvas" style="display:none;"></canvas>
