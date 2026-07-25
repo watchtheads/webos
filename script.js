@@ -37,8 +37,20 @@ function dragElement(element) {
   var currentY = 0;
   var pendingSnap = null;
 
-  if (document.getElementById(element.id + "header")) {
-    document.getElementById(element.id + "header").onmousedown = startDragging;
+  var headerEl = document.getElementById(element.id + "header");
+
+  if (headerEl) {
+    element.addEventListener("mousedown", function(e) {
+      if (e.target.closest('[id$="close"], [id$="minimize"], [id$="fullscreen"]')) {
+        return;
+      }
+      var headerRect = headerEl.getBoundingClientRect();
+      var elRect = element.getBoundingClientRect();
+      // draggable if click is above the header's bottom edge (the divider line)
+      if (e.clientY <= headerRect.bottom && e.clientY >= elRect.top) {
+        startDragging(e);
+      }
+    });
   } else {
     element.onmousedown = startDragging;
   }
