@@ -178,6 +178,24 @@ var taskbar = document.querySelector("#taskbar");
 
     topBar.style.display = "flex";
     taskbar.style.display = "flex";
+
+    var headerEl = document.getElementById(element.id + "header");
+    if (headerEl) {
+      headerEl.style.position = "";
+      headerEl.style.top = "";
+      headerEl.style.left = "";
+      headerEl.style.right = "";
+      headerEl.style.zIndex = "";
+      headerEl.style.background = "";
+      headerEl.style.padding = "";
+      headerEl.style.borderRadius = "";
+      headerEl.style.transition = "";
+      headerEl.style.transform = "";
+      if (element._fsMouseMoveHandler) {
+        document.removeEventListener("mousemove", element._fsMouseMoveHandler);
+        element._fsMouseMoveHandler = null;
+      }
+    }
   } else {
     element.dataset.prevWidth = element.style.width;
     element.dataset.prevHeight = element.style.height;
@@ -191,6 +209,32 @@ var taskbar = document.querySelector("#taskbar");
 
     topBar.style.display = "none";
     taskbar.style.display = "none";
+
+    var headerEl2 = document.getElementById(element.id + "header");
+    if (headerEl2) {
+      headerEl2.style.position = "fixed";
+      headerEl2.style.top = "0";
+      headerEl2.style.left = "0";
+      headerEl2.style.right = "0";
+      headerEl2.style.zIndex = "999997";
+      headerEl2.style.background = "#2b2b2b";
+      headerEl2.style.padding = "10px 16px 8px 16px";
+      headerEl2.style.borderRadius = "0";
+      headerEl2.style.transition = "transform 0.25s ease";
+      headerEl2.style.transform = "translateY(-100%)";
+
+      var revealZone = 40;
+      var fsMouseMoveHandler = function(e) {
+        if (element.dataset.fullscreen !== "true") return;
+        if (e.clientY <= revealZone) {
+          headerEl2.style.transform = "translateY(0)";
+        } else {
+          headerEl2.style.transform = "translateY(-100%)";
+        }
+      };
+      element._fsMouseMoveHandler = fsMouseMoveHandler;
+      document.addEventListener("mousemove", fsMouseMoveHandler);
+    }
   }
 }
 
