@@ -97,6 +97,12 @@ function dragElement(element) {
 
 dragElement(document.getElementById("welcome"));
 
+document.querySelectorAll('[id$="close"], [id$="minimize"], [id$="fullscreen"]').forEach(function(btn) {
+  btn.addEventListener("mousedown", function(e) {
+    e.stopPropagation();
+  });
+});
+
 // ---------- Resizing ----------
 function makeResizable(element) {
   var handle = element.querySelector(".resizeHandle");
