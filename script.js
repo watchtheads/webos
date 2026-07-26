@@ -1,5 +1,5 @@
 // TuffOS main script - window manager, dock, and all the little apps
-// (yes it's a lot of vanilla JS in one file, i'll split it up eventually - probably)
+// (yes it's a lot of vanilla JS in one file, i'll split it up eventually - probably joking never)
 
 var welcomeScreen = document.querySelector("#welcome");
 
@@ -256,12 +256,12 @@ var dockIcons = {};
 
 var appIcons = {
   welcome: "./idk.jpg",
-  notes: "./notes.webp",
-  coffee: "./coffee.webp",
-  calc: "./calculator.webp",
-  settings: "./settings.webp",
+  notes: "./notes.png",
+  coffee: "./coffee.png",
+  calc: "./calculator.png",
+  settings: "./settings.png",
   browser: "./astrosearch.png",
-  photobooth: "./photobooth.webp"
+  photobooth: "./photobooth.png"
 };
 
 function createDockIcon(id) {
