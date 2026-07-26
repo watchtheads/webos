@@ -1,6 +1,9 @@
+// TuffOS main script - window manager, dock, and all the little apps
+// (yes it's a lot of vanilla JS in one file, i'll split it up eventually - probably)
+
 var welcomeScreen = document.querySelector("#welcome");
 
-// ---------- Snap preview overlay (shared across all windows) ----------
+// floating blue rectangle that shows up when you drag a window near an edge
 var snapPreview = document.createElement("div");
 snapPreview.id = "snapPreview";
 snapPreview.style.position = "fixed";
@@ -12,24 +15,27 @@ snapPreview.style.display = "none";
 snapPreview.style.pointerEvents = "none";
 document.body.appendChild(snapPreview);
 
-var SNAP_ZONE = 24; // px from edge that triggers a snap
+var SNAP_ZONE = 24; // how close to the edge (px) before it snaps
 
 function getSnapZone(x, y) {
   var vw = window.innerWidth;
   var vh = window.innerHeight;
+  // left edge -> snap to left half
   if (x < SNAP_ZONE) {
     return { top: 0, left: 0, width: vw / 2, height: vh };
   }
+  // right edge -> right half
   if (x > vw - SNAP_ZONE) {
     return { top: 0, left: vw / 2, width: vw / 2, height: vh };
   }
+  // top -> fullscreen basically
   if (y < SNAP_ZONE) {
     return { top: 0, left: 0, width: vw, height: vh };
   }
   return null;
 }
 
-// ---------- Dragging (with snapping) ----------
+// ---- dragging windows around (with the snap-to-edge thing above) ----
 function dragElement(element) {
   var initialX = 0;
   var initialY = 0;
@@ -112,7 +118,7 @@ function dragElement(element) {
 
 dragElement(document.getElementById("welcome"));
 
-// ---------- Resizing ----------
+// ---- resizing windows via the little corner handle ----
 function makeResizable(element) {
   var handle = element.querySelector(".resizeHandle");
   if (!handle) return;
@@ -428,6 +434,7 @@ notesScreen.addEventListener("mousedown", function() {
   bringToFront(notesScreen);
 });
 
+// notes just live in memory for now - no localStorage, no backend, refresh and it's gone
 var notes = [
   { title: "Welcome", content: "Start typing your notes here..." }
 ];
@@ -551,6 +558,7 @@ calcButtons.forEach(function(btn) {
 });
 
 document.querySelector("#calcEquals").addEventListener("click", function() {
+  // yeah it's eval, i know. it's a toy calculator, not a bank
   try {
     calcDisplay.value = eval(calcDisplay.value);
   } catch (e) {
@@ -652,7 +660,7 @@ bgUploadZone.addEventListener("drop", function(e) {
   }
 });
 
-// ---------- Browser app ----------
+// ---- fake browser (just an iframe, some sites won't load bc of X-Frame-Options, not much we can do about that) ----
 dragElement(document.querySelector("#browser"));
 
 var browserScreen = document.querySelector("#browser");
@@ -704,7 +712,7 @@ browserFrame.addEventListener("load", function() {
   }
 });
 
-// ---------- Context menu ----------
+// ---- right click menu on the desktop ----
 var contextMenu = document.querySelector("#contextMenu");
 
 document.body.addEventListener("contextmenu", function(e) {
@@ -730,13 +738,13 @@ document.querySelectorAll(".contextMenuItem").forEach(function(item) {
   });
 });
 
-// ---------- Wire up resizing for all windows ----------
+// hook up resizing on everything, too lazy to call this individually per window
 ["welcome", "notes", "coffee", "calc", "settings", "browser", "photobooth"].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) makeResizable(el);
 });
 
-// ---------- Boot screen ----------
+// ---- boot screen (just for show, fades out after ~1.8s) ----
 var bootScreen = document.querySelector("#bootScreen");
 var bootBar = document.querySelector("#bootBar");
 
@@ -842,31 +850,144 @@ function captureFrame(targetCanvas) {
   c.drawImage(video, 0, 0);
 }
 
-function downloadCanvas(sourceCanvas, filename) {
-  var a = document.createElement("a");
-  a.href = sourceCanvas.toDataURL("image/png");
-  a.download = filename;
-  a.click();
+// photos/videos just pile up in this strip while the window's open, nothing
+// gets saved to disk unless you click in and manually save the preview img/video
+var photoThumbStrip = document.querySelector("#photoThumbStrip");
+var photoPreviewOverlay = document.querySelector("#photoPreviewOverlay");
+var photoPreviewImg = document.querySelector("#photoPreviewImg");
+var photoPreviewClose = document.querySelector("#photoPreviewClose");
+
+function addPhotoToStrip(sourceCanvas) {
+  var dataUrl = sourceCanvas.toDataURL("image/png");
+
+  var thumb = document.createElement("img");
+  thumb.src = dataUrl;
+  thumb.style.height = "56px";
+  thumb.style.width = "56px";
+  thumb.style.objectFit = "cover";
+  thumb.style.borderRadius = "6px";
+  thumb.style.cursor = "pointer";
+  thumb.style.flexShrink = "0";
+  thumb.addEventListener("click", function() {
+    showPreview("image", dataUrl);
+  });
+
+  photoThumbStrip.insertBefore(thumb, photoThumbStrip.firstChild);
 }
+
+function addVideoToStrip(blob) {
+  var url = URL.createObjectURL(blob);
+
+  var wrapper = document.createElement("div");
+  wrapper.style.position = "relative";
+  wrapper.style.height = "56px";
+  wrapper.style.width = "56px";
+  wrapper.style.flexShrink = "0";
+  wrapper.style.cursor = "pointer";
+  wrapper.style.borderRadius = "6px";
+  wrapper.style.overflow = "hidden";
+  wrapper.style.background = "#000";
+
+  var thumbVideo = document.createElement("video");
+  thumbVideo.src = url;
+  thumbVideo.style.width = "100%";
+  thumbVideo.style.height = "100%";
+  thumbVideo.style.objectFit = "cover";
+  thumbVideo.muted = true;
+  thumbVideo.playsInline = true;
+  // nudge the playhead a bit so the thumbnail isn't just a black frame
+  thumbVideo.addEventListener("loadedmetadata", function() {
+    thumbVideo.currentTime = Math.min(0.1, thumbVideo.duration || 0);
+  });
+
+  var playBadge = document.createElement("div");
+  playBadge.style.position = "absolute";
+  playBadge.style.inset = "0";
+  playBadge.style.display = "flex";
+  playBadge.style.alignItems = "center";
+  playBadge.style.justifyContent = "center";
+  playBadge.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));"><path d="M8 5v14l11-7z"/></svg>';
+
+  wrapper.appendChild(thumbVideo);
+  wrapper.appendChild(playBadge);
+
+  wrapper.addEventListener("click", function() {
+    showPreview("video", url);
+  });
+
+  photoThumbStrip.insertBefore(wrapper, photoThumbStrip.firstChild);
+}
+
+function showPreview(kind, url) {
+  photoPreviewImg.style.display = "none";
+  var existingVideo = document.querySelector("#photoPreviewVideo");
+  if (existingVideo) existingVideo.remove();
+
+  if (kind === "image") {
+    photoPreviewImg.src = url;
+    photoPreviewImg.style.display = "block";
+  } else {
+    var vid = document.createElement("video");
+    vid.id = "photoPreviewVideo";
+    vid.src = url;
+    vid.controls = true;
+    vid.autoplay = true;
+    vid.style.maxWidth = "90%";
+    vid.style.maxHeight = "80%";
+    vid.style.borderRadius = "8px";
+    vid.style.boxShadow = "0 8px 30px rgba(0,0,0,0.5)";
+    photoPreviewOverlay.insertBefore(vid, photoPreviewClose);
+  }
+  photoPreviewOverlay.style.display = "flex";
+}
+
+photoPreviewClose.addEventListener("click", function() {
+  photoPreviewOverlay.style.display = "none";
+  var existingVideo = document.querySelector("#photoPreviewVideo");
+  if (existingVideo) {
+    existingVideo.pause();
+    existingVideo.remove();
+  }
+});
+photoPreviewOverlay.addEventListener("click", function(e) {
+  if (e.target === photoPreviewOverlay) {
+    photoPreviewOverlay.style.display = "none";
+    var existingVideo = document.querySelector("#photoPreviewVideo");
+    if (existingVideo) {
+      existingVideo.pause();
+      existingVideo.remove();
+    }
+  }
+});
 
 function takeStillShot() {
   captureFrame(canvas);
-  downloadCanvas(canvas, "photo.png");
+  addPhotoToStrip(canvas);
 }
+
+var gridFillOverlay = document.querySelector("#gridFillOverlay");
+var gridFillQuads = document.querySelectorAll(".gridFillQuad");
 
 function takeFourShot() {
   var shots = [];
   var shotIndex = 0;
 
+  gridFillQuads.forEach(function(q) { q.src = ""; });
+  gridFillOverlay.style.display = "grid";
+
   function takeOneShot() {
     var shotCanvas = document.createElement("canvas");
     captureFrame(shotCanvas);
     shots.push(shotCanvas);
+    gridFillQuads[shotIndex].src = shotCanvas.toDataURL("image/png"); // fill that quarter in live
     shotIndex++;
     if (shotIndex < 4) {
-      setTimeout(takeOneShot, 800);
+      setTimeout(takeOneShot, 350);
     } else {
-      combineFourShots(shots);
+      setTimeout(function() {
+        gridFillOverlay.style.display = "none";
+        combineFourShots(shots);
+      }, 350);
     }
   }
   takeOneShot();
@@ -883,7 +1004,7 @@ function combineFourShots(shots) {
   ctx2.drawImage(shots[1], w, 0);
   ctx2.drawImage(shots[2], 0, h);
   ctx2.drawImage(shots[3], w, h);
-  downloadCanvas(combined, "photo-strip.png");
+  addPhotoToStrip(combined);
 }
 
 var mediaRecorder = null;
@@ -915,7 +1036,7 @@ function setShutterToRecordIcon() {
 
 function setShutterToCameraIcon() {
   shutterBtn.style.background = "red";
-  shutterBtn.innerHTML = "";
+  shutterBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>';
 }
 
 function startRecording() {
@@ -929,12 +1050,7 @@ function startRecording() {
 
   mediaRecorder.onstop = function () {
     var blob = new Blob(recordedChunks, { type: "video/webm" });
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement("a");
-    a.href = url;
-    a.download = "recording.webm";
-    a.click();
-    URL.revokeObjectURL(url);
+    addVideoToStrip(blob);
   };
 
   mediaRecorder.start();
