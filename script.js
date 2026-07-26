@@ -664,17 +664,13 @@ bgUploadZone.addEventListener("drop", function(e) {
   }
 });
 
-// ---- fake browser (just an iframe, some sites won't load bc of X-Frame-Options, not much we can do about that) ----
+// ---- "browser" window - now just an iframe pinned to the new-tab site, no URL bar ----
 dragElement(document.querySelector("#browser"));
 
 var browserScreen = document.querySelector("#browser");
 var browserClose = document.querySelector("#browserclose");
 var browserMinimize = document.querySelector("#browserminimize");
 var browserFullscreen = document.querySelector("#browserfullscreen");
-var browserUrl = document.querySelector("#browserUrl");
-var browserGo = document.querySelector("#browserGo");
-var browserFrame = document.querySelector("#browserFrame");
-var browserError = document.querySelector("#browserError");
 appScreens["browser"] = browserScreen;
 
 browserClose.addEventListener("click", function() {
@@ -691,30 +687,6 @@ browserFullscreen.addEventListener("click", function() {
 
 browserScreen.addEventListener("mousedown", function() {
   bringToFront(browserScreen);
-});
-
-function loadBrowserUrl() {
-  // slap https:// on the front if someone just types "google.com" etc
-  var val = browserUrl.value.trim();
-  if (!val) return;
-  if (!/^https?:\/\//i.test(val)) {
-    val = "https://" + val;
-  }
-  browserUrl.value = val;
-  browserError.style.display = "none";
-  browserFrame.src = val;
-}
-
-browserGo.addEventListener("click", loadBrowserUrl);
-browserUrl.addEventListener("keydown", function(e) {
-  if (e.key === "Enter") loadBrowserUrl();
-});
-
-browserFrame.addEventListener("load", function() {
-  try {
-    var _ = browserFrame.contentWindow.location.href;
-  } catch (err) {
-  }
 });
 
 // ---- right click menu on the desktop ----
