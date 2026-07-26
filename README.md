@@ -19,4 +19,6 @@ the browser doesnt really work, well it doesnt work at all
 built for stardance hackclub
 https://stardance.space/r-fduzf
 
-and credit to alexflipnotes coffee API
+ credits
+alexflipnotes - coffee API
+https://www.pexels.com/photo/black-and-white-photography-of-sand-2387819/
