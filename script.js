@@ -36,7 +36,7 @@ function getSnapZone(x, y) {
 }
 
 // ---- dragging windows around (with the snap-to-edge thing above) ----
-function dragElement(element) {
+function dragElement(element, disableSnap) {
   var initialX = 0;
   var initialY = 0;
   var currentX = 0;
@@ -88,6 +88,8 @@ function dragElement(element) {
     initialY = e.clientY;
     element.style.top = (element.offsetTop - currentY) + "px";
     element.style.left = (element.offsetLeft - currentX) + "px";
+
+    if (disableSnap) return; // this window isn't allowed to snap - skip the zone check
 
     var zone = getSnapZone(e.clientX, e.clientY);
     pendingSnap = zone;
@@ -523,7 +525,7 @@ newCoffeeBtn.addEventListener("click", function() {
   coffeeImg.src = "https://coffee.alexflipnote.dev/random?" + new Date().getTime();
 });
 
-dragElement(document.querySelector("#calc"));
+dragElement(document.querySelector("#calc"), true); // no resizing, no snapping for the calc
 
 var calcScreen = document.querySelector("#calc");
 var calcClose = document.querySelector("#calculatorclose");
@@ -540,9 +542,7 @@ calcScreenMinimize.addEventListener("click", function() {
   minimizeWindow(calcScreen);
 });
 
-calcScreenFullscreen.addEventListener("click", function() {
-  toggleFullscreen(calcScreen);
-});
+// fullscreen disabled for the calculator on purpose - grey dot, does nothing on click
 
 calcScreen.addEventListener("mousedown", function() {
   bringToFront(calcScreen);
@@ -571,6 +571,19 @@ document.querySelector("#calcEquals").addEventListener("click", function() {
 
 document.querySelector("#calcClear").addEventListener("click", function() {
   calcDisplay.value = "0";
+});
+
+// toggles the sign on whatever number's currently at the end of the display - basic, no fancy parsing
+document.querySelector("#calcSign").addEventListener("click", function() {
+  var match = calcDisplay.value.match(/(-?\d+\.?\d*)$/);
+  if (!match) return;
+  var num = match[1];
+  var flipped = num.startsWith("-") ? num.slice(1) : "-" + num;
+  calcDisplay.value = calcDisplay.value.slice(0, match.index) + flipped;
+});
+
+document.querySelector("#calcBackspace").addEventListener("click", function() {
+  calcDisplay.value = calcDisplay.value.length > 1 ? calcDisplay.value.slice(0, -1) : "0";
 });
 
 dragElement(document.querySelector("#settings"));
@@ -715,8 +728,8 @@ document.querySelectorAll(".contextMenuItem").forEach(function(item) {
   });
 });
 
-// hook up resizing on everything, too lazy to call this individually per window
-["welcome", "notes", "coffee", "calc", "settings", "browser", "photobooth"].forEach(function(id) {
+// hook up resizing on everything except the calculator, too lazy to call this individually per window
+["welcome", "notes", "coffee", "settings", "browser", "photobooth"].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) makeResizable(el);
 });

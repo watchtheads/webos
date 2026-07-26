@@ -25,6 +25,21 @@
   background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.4) 50%);
   border-bottom-right-radius: 16px;
 }
+.calcBtn, #calcEquals, #calcClear, #calcSign, #calcBackspace {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  border: none;
+  font-size: 18px;
+  color: #B3B3B3;
+  cursor: pointer;
+}
+.calcBtn[data-val] {
+  background-color: #FFFFFF;
+}
+.calcBtn[data-val="/"], .calcBtn[data-val="*"], .calcBtn[data-val="-"], .calcBtn[data-val="+"], .calcBtn[data-val="%"], #calcEquals, #calcClear, #calcSign, #calcBackspace {
+  background-color: #000000;
+}
 [id$="header"] {
   border-bottom: 1px solid rgba(255,255,255,0.25);
   padding-bottom: 8px;
@@ -135,33 +150,35 @@ html, body {
     </div>
 
     <!-- basic calculator, eval() does the actual math -->
-    <div id="calc" style="border: solid; width: 220px; height: 320px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+    <div id="calc" style="border: solid; width: 220px; height: 380px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="calcheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
         <div id="calculatorclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="calculatorminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
-        <div id="calculatorfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+        <div id="calculatorfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #888888; cursor: default;"></div>
       </div>
       <input id="calcDisplay" type="text" readonly style="width: 100%; box-sizing: border-box; margin-bottom: 8px; padding: 8px; font-size: 18px; text-align: right; border-radius: 8px; border: none;" value="0" />
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;">
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; align-content: center; flex: 1; min-height: 0; overflow-y: auto;">
+        <button id="calcClear">AC</button>
+        <button id="calcSign">+/-</button>
+        <button id="calcPercent" class="calcBtn" data-val="%">%</button>
+        <button class="calcBtn" data-val="/">÷</button>
         <button class="calcBtn" data-val="7">7</button>
         <button class="calcBtn" data-val="8">8</button>
         <button class="calcBtn" data-val="9">9</button>
-        <button class="calcBtn" data-val="/">÷</button>
+        <button class="calcBtn" data-val="*">×</button>
         <button class="calcBtn" data-val="4">4</button>
         <button class="calcBtn" data-val="5">5</button>
         <button class="calcBtn" data-val="6">6</button>
-        <button class="calcBtn" data-val="*">×</button>
+        <button class="calcBtn" data-val="-">−</button>
         <button class="calcBtn" data-val="1">1</button>
         <button class="calcBtn" data-val="2">2</button>
         <button class="calcBtn" data-val="3">3</button>
-        <button class="calcBtn" data-val="-">−</button>
+        <button class="calcBtn" data-val="+">+</button>
+        <button id="calcBackspace">⌫</button>
         <button class="calcBtn" data-val="0">0</button>
         <button class="calcBtn" data-val=".">.</button>
         <button id="calcEquals" data-val="=">=</button>
-        <button class="calcBtn" data-val="+">+</button>
-        <button id="calcClear" style="grid-column: span 4;">Clear</button>
       </div>
-      <div class="resizeHandle"></div>
     </div>
 
     <div id="settings" style="border: solid; width: 320px; height: 360px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
