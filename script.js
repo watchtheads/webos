@@ -303,6 +303,7 @@ function createDockIcon(id) {
   return wrapper;
 }
 
+// build a dock icon for every app up front, even before its window opens
 for (var appId in appIcons) {
   dockOpenApps.appendChild(createDockIcon(appId));
 }
@@ -518,6 +519,7 @@ coffeeScreen.addEventListener("mousedown", function() {
 });
 
 newCoffeeBtn.addEventListener("click", function() {
+  // cache-bust with a timestamp or it just shows the same cached pic
   coffeeImg.src = "https://coffee.alexflipnote.dev/random?" + new Date().getTime();
 });
 
@@ -546,6 +548,7 @@ calcScreen.addEventListener("mousedown", function() {
   bringToFront(calcScreen);
 });
 
+// number pad + operators, all wired the same way off data-val
 var calcButtons = document.querySelectorAll(".calcBtn");
 calcButtons.forEach(function(btn) {
   btn.addEventListener("click", function() {
@@ -594,6 +597,7 @@ settingsScreen.addEventListener("mousedown", function() {
   bringToFront(settingsScreen);
 });
 
+// wallpaper picker - presets first, custom upload/url stuff further down
 var bgOptions = document.querySelectorAll(".bgOption");
 bgOptions.forEach(function(img) {
   img.addEventListener("click", function() {
@@ -690,6 +694,7 @@ browserScreen.addEventListener("mousedown", function() {
 });
 
 function loadBrowserUrl() {
+  // slap https:// on the front if someone just types "google.com" etc
   var val = browserUrl.value.trim();
   if (!val) return;
   if (!/^https?:\/\//i.test(val)) {
@@ -771,9 +776,11 @@ appScreens["photobooth"] = photoboothScreen;
 
 photoboothClose.addEventListener("click", function () {
   closeWindow(photoboothScreen);
+  stopCamera();
 });
 photoboothMinimize.addEventListener("click", function () {
   minimizeWindow(photoboothScreen);
+  stopCamera();
 });
 photoboothFullscreen.addEventListener("click", function () {
   toggleFullscreen(photoboothScreen);
@@ -800,6 +807,19 @@ function startCamera() {
       alert("Couldn't access webcam: " + error.name);
       cameraStarted = false;
     });
+}
+
+function stopCamera() {
+  if (!cameraStarted) return;
+  if (mediaRecorder && mediaRecorder.state === "recording") {
+    stopRecording();
+  }
+  var stream = video.srcObject;
+  if (stream) {
+    stream.getTracks().forEach(function (track) { track.stop(); }); // actually kills the webcam light, not just hiding the video
+    video.srcObject = null;
+  }
+  cameraStarted = false;
 }
 
 function openPhotobooth() {
