@@ -258,7 +258,7 @@ var appIcons = {
   coffee: "./coffee.webp",
   calc: "./calculator.webp",
   settings: "./settings.webp",
-  browser: "./image.webp",
+  browser: "./astrosearch.webp",
   photobooth: "./photobooth.webp"
 };
 
