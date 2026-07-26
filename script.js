@@ -775,12 +775,12 @@ var photoboothFullscreen = document.querySelector("#photoboothfullscreen");
 appScreens["photobooth"] = photoboothScreen;
 
 photoboothClose.addEventListener("click", function () {
-  closeWindow(photoboothScreen);
   stopCamera();
+  closeWindow(photoboothScreen);
 });
 photoboothMinimize.addEventListener("click", function () {
-  minimizeWindow(photoboothScreen);
   stopCamera();
+  minimizeWindow(photoboothScreen);
 });
 photoboothFullscreen.addEventListener("click", function () {
   toggleFullscreen(photoboothScreen);
@@ -814,6 +814,7 @@ function stopCamera() {
   if (mediaRecorder && mediaRecorder.state === "recording") {
     stopRecording();
   }
+  video.pause(); // freeze it instantly, don't wait on the stream teardown below
   var stream = video.srcObject;
   if (stream) {
     stream.getTracks().forEach(function (track) { track.stop(); }); // actually kills the webcam light, not just hiding the video
