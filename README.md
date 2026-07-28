@@ -23,3 +23,4 @@ https://stardance.space/r-fduzf
 alexflipnotes - coffee API
 https://www.pexels.com/photo/black-and-white-photography-of-sand-2387819/
 lucide.dev - icon help
+timezones https://github.com/moment/moment-timezone/blob/develop/data/packed/latest.json
