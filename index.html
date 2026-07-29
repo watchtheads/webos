@@ -1,8 +1,25 @@
 <!DOCTYPE html>
-<!-- TuffOS - a dumb little fake desktop OS, mostly built for fun andstardance-->
+<!-- TuffOS - a dumb little fake desktop OS, mostly built for fun -->
 <html>
   <head>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
+:root {
+  --finder-window-bg: #1d2026;
+  --finder-panel-bg: #252a31;
+  --finder-panel-border: rgba(255,255,255,0.08);
+  --finder-panel-soft: rgba(255,255,255,0.03);
+  --finder-text: #f3f5f7;
+  --finder-muted: #9aa3ad;
+  --finder-accent: #4ea1ff;
+  --finder-accent-soft: rgba(78,161,255,0.18);
+  --finder-hover: rgba(255,255,255,0.06);
+  --finder-selected: rgba(78,161,255,0.22);
+  --finder-scrollbar-track: rgba(255,255,255,0.03);
+  --finder-scrollbar-thumb: rgba(255,255,255,0.16);
+}
 * {
   box-sizing: border-box;
 }
@@ -11,6 +28,281 @@
   border-radius: 6px;
   cursor: pointer;
   font-size: 14px;
+}
+.finderWindow {
+  width: min(1100px, 94vw);
+  height: min(760px, 84vh);
+  padding: 14px;
+  border-radius: 20px;
+  background: var(--finder-window-bg);
+  color: var(--finder-text);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: none;
+  flex-direction: column;
+  box-shadow: 0 24px 70px rgba(0,0,0,0.45), 0 8px 24px rgba(0,0,0,0.3);
+  overflow: hidden;
+}
+.finderShell {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  background: var(--finder-panel-bg);
+  border: 1px solid var(--finder-panel-border);
+}
+.finderSidebar {
+  width: 250px;
+  flex-shrink: 0;
+  padding: 18px 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.045), rgba(255,255,255,0.02));
+  border-right: 1px solid var(--finder-panel-border);
+  overflow-y: auto;
+}
+.finderSidebarSection {
+  margin: 0 10px 10px;
+  font-size: 11px;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--finder-muted);
+}
+.finderSidebarItem {
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  padding: 10px 12px;
+  margin-bottom: 4px;
+  background: transparent;
+  color: var(--finder-text);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  transition: background-color 180ms ease, transform 180ms ease;
+}
+.finderSidebarItem:hover {
+  background: var(--finder-hover);
+}
+.finderSidebarItem.active {
+  background: var(--finder-accent-soft);
+  box-shadow: inset 0 0 0 1px rgba(78,161,255,0.22);
+}
+.finderSidebarIcon,
+.finderToolbarIcon,
+.finderItemIcon,
+.finderSearchIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.finderSidebarIcon svg,
+.finderToolbarIcon svg,
+.finderItemIcon svg,
+.finderSearchIcon svg {
+  width: 100%;
+  height: 100%;
+  stroke: currentColor;
+}
+.finderSidebarIcon {
+  width: 18px;
+  height: 18px;
+  color: var(--finder-muted);
+}
+.finderSidebarItem.active .finderSidebarIcon,
+.finderSidebarItem:hover .finderSidebarIcon {
+  color: var(--finder-text);
+}
+.finderSidebarLabel {
+  font-size: 14px;
+  font-weight: 600;
+}
+.finderMain {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+  background: var(--finder-panel-bg);
+}
+.finderToolbar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 14px;
+}
+.finderSearch {
+  width: min(340px, 100%);
+  min-width: 220px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+}
+.finderSearch:focus-within {
+  border-color: rgba(78,161,255,0.42);
+  background: rgba(78,161,255,0.11);
+  box-shadow: 0 0 0 3px rgba(78,161,255,0.12);
+}
+.finderSearchIcon {
+  width: 16px;
+  height: 16px;
+  color: var(--finder-muted);
+}
+.finderSearchInput {
+  width: 100%;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--finder-text);
+  font: 600 14px/1.4 'Lato', -apple-system, BlinkMacSystemFont, "SF Pro Display", Helvetica, Arial, sans-serif;
+}
+.finderSearchInput::placeholder {
+  color: #88919b;
+}
+.finderGridWrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: 18px;
+  overflow: hidden;
+}
+.finderGrid {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  padding: 14px 10px 18px 6px;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 8px 6px;
+  align-content: start;
+  color: var(--finder-text);
+  scrollbar-color: var(--finder-scrollbar-thumb) var(--finder-scrollbar-track);
+  scrollbar-width: thin;
+}
+.finderGrid::-webkit-scrollbar,
+.finderSidebar::-webkit-scrollbar,
+.setupComboResults::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.finderGrid::-webkit-scrollbar-track,
+.finderSidebar::-webkit-scrollbar-track,
+.setupComboResults::-webkit-scrollbar-track {
+  background: var(--finder-scrollbar-track);
+}
+.finderGrid::-webkit-scrollbar-thumb,
+.finderSidebar::-webkit-scrollbar-thumb,
+.setupComboResults::-webkit-scrollbar-thumb {
+  background: var(--finder-scrollbar-thumb);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.finderGrid::-webkit-scrollbar-thumb:hover,
+.finderSidebar::-webkit-scrollbar-thumb:hover,
+.setupComboResults::-webkit-scrollbar-thumb:hover {
+  background: rgba(255,255,255,0.24);
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+.finderItem {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--finder-text);
+  border-radius: 16px;
+  padding: 12px 10px 10px;
+  min-height: 118px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 180ms ease, background-color 180ms ease, box-shadow 180ms ease;
+  position: relative;
+}
+.finderItem:hover {
+  background: var(--finder-hover);
+  transform: translateY(-1px);
+}
+.finderItem.selected {
+  background: var(--finder-selected);
+  box-shadow: inset 0 0 0 1px rgba(78,161,255,0.35);
+}
+.finderItem.focused:not(.selected) {
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+.finderItemIcon {
+  width: 56px;
+  height: 56px;
+  color: #eff4f8;
+}
+.finderItem.folder .finderItemIcon {
+  color: #e9edf2;
+}
+.finderItemLabel {
+  max-width: 100%;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+  word-break: break-word;
+}
+.finderItemMeta {
+  font-size: 11px;
+  color: var(--finder-muted);
+}
+.finderSelectionBox {
+  position: absolute;
+  display: none;
+  border-radius: 12px;
+  border: 1px solid rgba(78,161,255,0.5);
+  background: rgba(78,161,255,0.14);
+  pointer-events: none;
+  z-index: 6;
+}
+.finderEmptyState {
+  grid-column: 1 / -1;
+  min-height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  color: var(--finder-muted);
+  text-align: center;
+  padding: 48px 24px;
+}
+.finderEmptyState strong {
+  color: var(--finder-text);
+  font-size: 18px;
+}
+body.light-mode #explorer.finderWindow {
+  background: var(--finder-window-bg) !important;
+  color: var(--finder-text) !important;
+}
+body.light-mode #explorer.finderWindow .finderShell,
+body.light-mode #explorer.finderWindow .finderSidebar,
+body.light-mode #explorer.finderWindow .finderMain {
+  background: inherit !important;
+  color: inherit !important;
+}
+body.light-mode #explorer.finderWindow .finderSidebar {
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015)) !important;
 }
 .contextMenuItem:hover {
   background-color: rgba(255,255,255,0.1);
@@ -40,6 +332,40 @@
 .calcBtn[data-val="/"], .calcBtn[data-val="*"], .calcBtn[data-val="-"], .calcBtn[data-val="+"], .calcBtn[data-val="%"], #calcEquals, #calcClear, #calcSign, #calcBackspace {
   background-color: #000000;
 }
+/* light mode overrides - !important needed since every window uses inline styles */
+body.light-mode {
+  background-color: #eee !important;
+}
+body.light-mode #topBar {
+  background-color: rgba(255,255,255,0.6) !important;
+  color: #111 !important;
+}
+body.light-mode #topBar p {
+  color: #111 !important;
+}
+body.light-mode #welcome,
+body.light-mode #notes,
+body.light-mode #coffee,
+body.light-mode #calc,
+body.light-mode #settings,
+body.light-mode #browser,
+body.light-mode #photobooth,
+body.light-mode #explorer {
+  background-color: #f4f4f4 !important;
+  color: #111 !important;
+}
+body.light-mode #notesList {
+  background-color: #ddd !important;
+}
+body.light-mode #explorerGrid {
+  background-color: #e2e2e2 !important;
+}
+body.light-mode [id$="header"] {
+  border-bottom-color: rgba(0,0,0,0.15) !important;
+}
+body.light-mode #taskbar {
+  background-color: rgba(0,0,0,0.08) !important;
+}
 [id$="header"] {
   border-bottom: 1px solid rgba(255,255,255,0.25);
   padding-bottom: 8px;
@@ -54,6 +380,263 @@ html, body {
   height: 100vh;
   margin: 0;
 }
+
+/* ---- Setup Assistant ---- */
+#setupWizard {
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "SF Pro Display", Helvetica, Arial, sans-serif;
+}
+.setupModal {
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "SF Pro Display", Helvetica, Arial, sans-serif;
+}
+.setupCard {
+  display: none;
+  width: 480px;
+  max-width: 92vw;
+  max-height: 86vh;
+  background: #19191c;
+  border: 1px solid #2c2c30;
+  border-radius: 10px;
+  padding: 32px 36px;
+  flex-direction: column;
+  box-sizing: border-box;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.14s linear, transform 0.14s linear;
+}
+.setupCard.setupCardActive {
+  opacity: 1;
+  transform: translateY(0);
+}
+.setupEmoji {
+  font-size: 32px;
+  margin-bottom: 4px;
+}
+.setupTitle {
+  font-size: 21px;
+  font-weight: 700;
+  margin: 4px 0 8px 0;
+}
+.setupSubtitle {
+  font-size: 13px;
+  color: #a5a5ac;
+  margin: 0 0 18px 0;
+  line-height: 1.5;
+}
+.setupBody {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.setupFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  gap: 10px;
+}
+.setupBtnPrimary {
+  background: #4ea1ff;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 20px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.setupBtnPrimary:hover { background: #3f92f2; }
+.setupBtnPrimary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.setupBtnSecondary {
+  background: transparent;
+  color: #b5b5bc;
+  border: none;
+  border-radius: 6px;
+  padding: 9px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.setupBtnSecondary:hover { color: #fff; }
+.setupBtnGhost {
+  background: #26262a;
+  color: #cfcfd6;
+  border: 1px solid #333338;
+  border-radius: 6px;
+  padding: 9px 16px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.setupBtnGhost:hover { background: #2d2d32; }
+.setupInput, .setupSelect, .setupTextarea {
+  width: 100%;
+  box-sizing: border-box;
+  background: #101012;
+  border: 1px solid #2c2c30;
+  color: #fff;
+  border-radius: 6px;
+  padding: 10px 11px;
+  font-size: 13px;
+  outline: none;
+}
+.setupInput:focus, .setupSelect:focus, .setupTextarea:focus {
+  border-color: #4ea1ff;
+}
+.setupField { margin-bottom: 14px; }
+.setupComboResults {
+  position: fixed;
+  max-height: 360px;
+  overflow-y: auto;
+  background: #1c1c20;
+  border: 1px solid #2c2c30;
+  border-radius: 6px;
+  z-index: 1000000;
+  display: none;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "SF Pro Display", Helvetica, Arial, sans-serif;
+}
+.setupComboRow {
+  padding: 9px 12px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #e2e2e6;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "SF Pro Display", Helvetica, Arial, sans-serif;
+}
+.setupComboRowMain {
+  color: #e2e2e6;
+  min-width: 0;
+  font-weight: 700;
+  letter-spacing: 0.1px;
+}
+.setupComboRowMeta {
+  color: #85858c;
+  font-size: 11px;
+  text-align: right;
+  flex-shrink: 0;
+  letter-spacing: 0.2px;
+  line-height: 1.35;
+}
+.setupComboRow:hover, .setupComboRow.setupComboRowActive {
+  background: #262629;
+}
+.setupComboEmpty {
+  padding: 9px 12px;
+  font-size: 13px;
+  color: #666;
+  font-family: 'Lato', -apple-system, BlinkMacSystemFont, "SF Pro Display", Helvetica, Arial, sans-serif;
+}
+.setupLabel {
+  font-size: 11px;
+  color: #85858c;
+  margin-bottom: 6px;
+  display: block;
+}
+.setupWifiRow {
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+}
+.setupWifiRow:hover { background: #1f1f23; }
+.setupWifiRow.setupWifiActive { border-color: #4ea1ff; background: #16232f; }
+.setupRadioNotNow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #a5a5ac;
+  cursor: pointer;
+  margin-top: 10px;
+}
+.setupDropZone {
+  padding: 22px;
+  border: 1px dashed #3a3a40;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 12px;
+  color: #a5a5ac;
+  cursor: pointer;
+}
+.setupDropZone.setupDropZoneHover { border-color: #4ea1ff; }
+.setupAvatarPreview {
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: #333;
+  display: block;
+  margin: 0 auto 10px auto;
+  border: 1px solid #333338;
+}
+.setupCheckboxRow {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-size: 12px;
+  color: #c4c4cb;
+  margin-top: 12px;
+  cursor: pointer;
+}
+.setupAppearanceCard {
+  flex: 1;
+  border-radius: 8px;
+  padding: 12px;
+  cursor: pointer;
+  border: 1px solid #2c2c30;
+  background: #101012;
+  text-align: center;
+}
+.setupAppearanceCard.setupAppearanceActive { border-color: #4ea1ff; }
+.setupTerminal {
+  background: #0a0a0c;
+  border: 1px solid #2c2c30;
+  border-radius: 6px;
+  padding: 14px;
+  height: 220px;
+  overflow-y: auto;
+  font-family: "SF Mono", "Consolas", "Menlo", monospace;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #6bd97a;
+  text-align: left;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.setupTerminalCursor {
+  display: inline-block;
+  animation: setupCursorBlink 1s steps(1) infinite;
+  color: #6bd97a;
+}
+@keyframes setupCursorBlink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+.setupModalOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 999999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.setupModal {
+  width: 320px;
+  background: #19191c;
+  border: 1px solid #2c2c30;
+  border-radius: 10px;
+  padding: 22px;
+  text-align: center;
+}
 </style>
 </head>
 <body style="background-color: #000000; color: #ffffff; font-family: 'Trattatello', Helvetica, fantasy; background-image: url(./sand.jpg); background-size: cover; height: 100vh;">
@@ -67,6 +650,219 @@ html, body {
   </div>
 </div>
 
+<!-- ================= Setup Assistant ================= -->
+<div id="setupWizard" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0d0d10; color: #fff; z-index: 999998; align-items: center; justify-content: center;">
+
+  <!-- 1. Welcome -->
+  <div class="setupCard" data-step="welcome">
+    <div class="setupEmoji">👋</div>
+    <h2 class="setupTitle">Welcome to TuffOS</h2>
+    <p class="setupSubtitle">Welcome to TuffOS! This setup assistant will help you get everything ready before you start using your desktop.<br><br>Setup should only take a minute or two.</p>
+    <div class="setupFooter" style="justify-content: flex-end;">
+      <button class="setupBtnPrimary" data-next="privacy">Continue</button>
+    </div>
+  </div>
+
+  <!-- 2. Data & Privacy -->
+  <div class="setupCard" data-step="privacy">
+    <div class="setupEmoji">🔒</div>
+    <h2 class="setupTitle">Data &amp; Privacy</h2>
+    <p class="setupSubtitle">Your privacy matters.</p>
+    <div class="setupBody">
+      <p style="font-size: 13px; color: #d6d6db; line-height: 1.6;">
+        TuffOS doesn't collect analytics, telemetry, advertising identifiers, browsing history, or personal information.<br><br>
+        If you for some reason want to give me your data, lmk on GitHub.<br><br>
+        GitHub: <a href="https://github.com/watchtheads" target="_blank" style="color: #4ea1ff;">https://github.com/watchtheads</a><br><br>
+        <em>(Seriously though... we don't collect anything.)</em>
+      </p>
+    </div>
+    <div class="setupFooter">
+      <button class="setupBtnSecondary" data-back="welcome">Back</button>
+      <button class="setupBtnPrimary" data-next="terms">Continue</button>
+    </div>
+  </div>
+
+  <!-- 3. Terms & Conditions -->
+  <div class="setupCard" data-step="terms">
+    <div class="setupEmoji">📜</div>
+    <h2 class="setupTitle">Terms &amp; Conditions</h2>
+    <p class="setupSubtitle">Please read and accept the Terms &amp; Conditions before continuing.</p>
+    <div class="setupBody">
+      <div class="setupTextarea" style="height: 160px; overflow-y: auto; line-height: 1.6; font-size: 13px;">
+        <strong>TuffOS Terms &amp; Conditions</strong><br><br>
+        • TuffOS is a fun desktop environment.<br>
+        • Your files remain on your device.<br>
+        • TuffOS does not collect your personal data.<br>
+        • No warranties are provided.<br>
+        • Don't blame TuffOS if your cereal gets soggy.<br>
+        • Have fun.
+      </div>
+      <label class="setupCheckboxRow">
+        <input type="checkbox" id="setupTermsCheckbox" style="margin-top: 2px;" />
+        I have read the Terms &amp; Conditions
+      </label>
+    </div>
+    <div class="setupFooter">
+      <button class="setupBtnSecondary" data-back="privacy">Back</button>
+      <button class="setupBtnPrimary" id="setupTermsContinue" disabled>Continue</button>
+    </div>
+  </div>
+
+  <!-- 5. Create Account -->
+  <div class="setupCard" data-step="account">
+    <div class="setupEmoji">👤</div>
+    <h2 class="setupTitle">Create Your Account</h2>
+    <p class="setupSubtitle">Create the account you'll use to sign in to TuffOS.<br>Your account is stored only on this device.</p>
+    <div class="setupBody">
+      <img id="setupAvatarPreview" class="setupAvatarPreview" src="./idk.jpg" />
+      <div style="display:flex; gap: 8px; justify-content: center; margin-bottom: 16px;">
+        <button class="setupBtnGhost" id="setupAvatarUploadBtn">Upload Image</button>
+        <input id="setupAvatarFileInput" type="file" accept="image/*" style="display:none;" />
+      </div>
+      <div id="setupAvatarDropZone" class="setupDropZone" style="margin-bottom: 14px;">
+        Drag &amp; drop an image, or paste an image URL below
+        <input id="setupAvatarUrlInput" class="setupInput" style="margin-top: 8px;" placeholder="Paste image URL..." />
+      </div>
+      <div class="setupField">
+        <label class="setupLabel">Username</label>
+        <input id="setupUsername" class="setupInput" type="text" placeholder="e.g. dancingonstars67" />
+      </div>
+      <div class="setupField">
+        <label class="setupLabel">Password</label>
+        <input id="setupPassword" class="setupInput" type="password" placeholder="Pick anything" />
+      </div>
+      <div class="setupField">
+        <label class="setupLabel">Password Hint</label>
+        <input id="setupPasswordHint" class="setupInput" type="text" placeholder="e.g. my dog's frog's name (optional)" />
+      </div>
+    </div>
+    <div class="setupFooter">
+      <button class="setupBtnSecondary" data-back="terms">Back</button>
+      <button class="setupBtnPrimary" id="setupAccountContinue" data-next="timezone" disabled>Continue</button>
+    </div>
+  </div>
+
+  <!-- 6. Time Zone -->
+  <div class="setupCard" data-step="timezone">
+    <div class="setupEmoji">🕒</div>
+    <h2 class="setupTitle">Select Your Time Zone</h2>
+    <p class="setupSubtitle">Choose the time zone you'd like TuffOS to use for displaying the correct time and date.</p>
+    <div class="setupBody">
+      <div class="setupField">
+        <input id="setupTimezoneInput" class="setupInput" placeholder="Search by country, e.g. China, Brazil, Germany..." autocomplete="off" />
+        <div id="setupTimezoneResults" class="setupComboResults"></div>
+      </div>
+    </div>
+    <div class="setupFooter">
+      <button class="setupBtnSecondary" data-back="account">Back</button>
+      <button class="setupBtnPrimary" data-next="wifi" data-requires="timezone" disabled>Continue</button>
+    </div>
+
+  </div>
+
+  <!-- 7. Wi-Fi -->
+  <div class="setupCard" data-step="wifi">
+    <div class="setupEmoji">📶</div>
+    <h2 class="setupTitle">Connect to Wi-Fi</h2>
+    <p class="setupSubtitle">Select a wireless network to connect to.</p>
+    <div class="setupBody">
+      <div id="setupWifiList"></div>
+      <label class="setupRadioNotNow">
+        <input type="radio" id="setupWifiNotNow" name="setupWifiChoice" />
+        Not Now
+      </label>
+    </div>
+    <div class="setupFooter">
+      <button class="setupBtnSecondary" data-back="timezone">Back</button>
+      <button class="setupBtnPrimary" id="setupWifiContinue" data-next="migrate" disabled>Continue</button>
+    </div>
+  </div>
+
+  <!-- 8. Migration Assistant -->
+  <div class="setupCard" data-step="migrate">
+    <div class="setupEmoji">💾</div>
+    <h2 class="setupTitle">Transfer Your Data</h2>
+    <p class="setupSubtitle">Restore settings, files and preferences from a previous TuffOS backup.</p>
+    <div class="setupBody">
+      <div id="setupMigrateDropZone" class="setupDropZone">
+        Click <strong>Restore Backup</strong> below, or drag &amp; drop a <code>.json</code> backup file here
+        <input id="setupMigrateFileInput" type="file" accept="application/json" style="display:none;" />
+      </div>
+      <div style="display:flex; gap: 8px; justify-content: center; margin-top: 12px;">
+        <button class="setupBtnGhost" id="setupMigrateRestoreBtn">Restore Backup</button>
+      </div>
+      <p id="setupMigrateStatus" style="min-height: 18px; font-size: 13px; margin-top: 10px; text-align: center;"></p>
+    </div>
+    <div class="setupFooter">
+      <button class="setupBtnSecondary" data-back="wifi">Back</button>
+      <div style="display:flex; gap: 8px;">
+        <button class="setupBtnGhost" data-next="appearance">Not Now</button>
+        <button class="setupBtnPrimary" data-next="appearance">Continue</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 9. Appearance -->
+  <div class="setupCard" data-step="appearance">
+    <div class="setupEmoji">🎨</div>
+    <h2 class="setupTitle">Choose Your Appearance</h2>
+    <p class="setupSubtitle">Select the appearance you'd like TuffOS to use.</p>
+    <div class="setupBody">
+      <div style="display: flex; gap: 14px;">
+        <div class="setupAppearanceCard setupAppearanceActive" data-theme="dark">
+          <div style="width: 100%; height: 70px; background: #000; border-radius: 8px; margin-bottom: 8px;"></div>
+          <p style="margin:0; font-size: 13px;">🌙 Dark</p>
+        </div>
+        <div class="setupAppearanceCard" data-theme="light">
+          <div style="width: 100%; height: 70px; background: #f0f0f0; border-radius: 8px; margin-bottom: 8px;"></div>
+          <p style="margin:0; font-size: 13px;">☀️ Light</p>
+        </div>
+      </div>
+    </div>
+    <div class="setupFooter">
+      <button class="setupBtnSecondary" data-back="migrate">Back</button>
+      <button class="setupBtnPrimary" data-next="installing">Continue</button>
+    </div>
+  </div>
+
+  <!-- 10. Installing (terminal-style build-out of choices) -->
+  <div class="setupCard" data-step="installing" style="width: 560px;">
+    <div class="setupEmoji">🖥️</div>
+    <h2 class="setupTitle">Setting Up TuffOS</h2>
+    <p class="setupSubtitle">Sit tight while we build your desktop.</p>
+    <div class="setupBody">
+      <div id="setupTerminal" class="setupTerminal"><span id="setupTerminalText"></span><span class="setupTerminalCursor">▋</span></div>
+    </div>
+    <div class="setupFooter" style="justify-content: center;">
+      <button class="setupBtnPrimary" id="setupInstallContinue" data-next="complete" disabled>Continue</button>
+    </div>
+  </div>
+
+  <!-- 11. Complete -->
+  <div class="setupCard" data-step="complete" style="text-align: center; align-items: center;">
+    <div class="setupEmoji" style="font-size: 56px;">🎉</div>
+    <h2 class="setupTitle">Setup Complete</h2>
+    <p class="setupSubtitle">TuffOS is now ready to use.<br><br>Thanks for setting everything up.<br>It's always time to eat cereal.</p>
+    <div class="setupFooter" style="justify-content: center;">
+      <button class="setupBtnPrimary" id="setupFinishBtn" style="padding: 12px 32px;">Start Using TuffOS</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- Terms agreement confirmation modal -->
+<div id="setupAgreeModalOverlay" class="setupModalOverlay">
+  <div class="setupModal">
+    <h3 style="margin-top: 0;">Terms &amp; Conditions</h3>
+    <p style="font-size: 13px; color: #d6d6db;">I have read and agree to the TuffOS Terms &amp; Conditions.</p>
+    <div style="display:flex; gap: 8px; justify-content: center; margin-top: 16px;">
+      <button class="setupBtnGhost" id="setupAgreeCancelBtn">Close</button>
+      <button class="setupBtnPrimary" id="setupAgreeConfirmBtn">Agree</button>
+    </div>
+  </div>
+</div>
+<!-- ================= /Setup Assistant ================= -->
+
     <div id="topBar" style="position: absolute; top: 0; width: 100%; display: flex; justify-content: space-between; backdrop-filter: blur(10px); background-color: rgba(0, 0, 0, 0.25); color: #fff; box-sizing: border-box; padding: 8px 16px;">
       <p id="welcomeopen" style="margin: 0; cursor: pointer;">TuffOS <span style="font-size: 12px;">it's always time to eat cereal</span></p>
       <p id="timeElement" style="margin: 0;">Time</p>
@@ -74,22 +870,22 @@ html, body {
 
     <div id="desktopApps" style="padding-top: 64px; padding-left: 16px; display: flex; flex-wrap: wrap;">
       <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(notesScreen);">
-        <img src="./notes.png" style="width: 64px; height: 64px; border-radius: 16px;">
+        <img src="./notes.webp" style="width: 64px; height: 64px; border-radius: 16px;">
         <p style="margin: 0px; color: #fff;">Tuff notes</p>
       </div>
 
       <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(coffeeScreen);">
-        <img src="./coffee.png" style="width: 64px; height: 64px; border-radius: 16px;">
+        <img src="./coffee.webp" style="width: 64px; height: 64px; border-radius: 16px;">
         <p style="margin: 0px; color: #fff;">Coffee</p>
       </div>
 
       <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(calcScreen);">
-        <img src="./calculator.png" style="width: 64px; height: 64px; border-radius: 16px;">
+        <img src="./calculator.webp" style="width: 64px; height: 64px; border-radius: 16px;">
         <p style="margin: 0px; color: #fff;">Calc short for calculator</p>
       </div>
 
       <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(settingsScreen);">
-        <img src="./settings.png" style="width: 64px; height: 64px; border-radius: 16px;">
+        <img src="./settings.webp" style="width: 64px; height: 64px; border-radius: 16px;">
         <p style="margin: 0px; color: #fff;">Settings</p>
       </div>
 
@@ -99,13 +895,25 @@ html, body {
       </div>
 
     <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="openPhotobooth();">
-    <img src="./photobooth.png" style="width: 64px; height: 64px; border-radius: 16px;">
+    <img src="./photobooth.webp" style="width: 64px; height: 64px; border-radius: 16px;">
     <p style="margin: 0px; color: #fff;">PhotoBooth</p>
+</div>
+
+    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(explorerScreen);">
+    <img src="./idk.jpg" style="width: 64px; height: 64px; border-radius: 16px;">
+    <p style="margin: 0px; color: #fff;">Files</p>
+</div>
+
+    <div id="binDesktopIcon" style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;">
+    <div id="binDesktopIconGlyph" style="width: 64px; height: 64px; border-radius: 16px; background: #2b2b2b; display: flex; align-items: center; justify-content: center;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 30px; height: 30px;"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+    </div>
+    <p style="margin: 0px; color: #fff;">Bin</p>
 </div>
 
     </div>
 
-    <div id="welcome" style="border: solid; width: 300px; height: 420px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: flex; flex-direction: column;">
+    <div id="welcome" style="border: solid; width: 300px; height: 420px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="welcomeheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
         <div id="welcomeclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="welcomeminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -120,7 +928,7 @@ html, body {
       <div class="resizeHandle"></div>
     </div>
 
-    <div id="notes" style="border: solid; width: 400px; height: 300px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+    <div id="notes" style="border: solid; width: 400px; height: 300px; padding: 16px; border-radius: 16px; background-color: #1F2E22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="notesheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
         <div id="notesclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="notesminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -136,7 +944,7 @@ html, body {
     </div>
 
     <!-- random coffee pic generator, purely for vibes -->
-    <div id="coffee" style="border: solid; width: 320px; height: 400px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center;">
+    <div id="coffee" style="border: solid; width: 320px; height: 400px; padding: 16px; border-radius: 16px; background-color: #2E2013; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; align-items: center;">
       <div id="coffeeheader" style="display: flex; align-items: center; gap: 6px; user-select: none; align-self: flex-start; width: 100%;">
         <div id="coffeeclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="coffeeminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -181,7 +989,7 @@ html, body {
       </div>
     </div>
 
-    <div id="settings" style="border: solid; width: 320px; height: 360px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+    <div id="settings" style="border: solid; width: 320px; height: 360px; padding: 16px; border-radius: 16px; background-color: #1F2733; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="settingsheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
         <div id="settingsclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="settingsminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -212,6 +1020,34 @@ html, body {
     </div>
 
     <!-- "browser" - now just a fixed iframe pointing at the new-tab site -->
+    <!-- File Explorer - real files from the project + text docs saved in localStorage -->
+    <div id="explorer" class="finderWindow">
+      <div id="explorerheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
+        <div id="explorerclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="explorerminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="explorerfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+      </div>
+      <div class="finderShell">
+        <aside class="finderSidebar" id="finderSidebar">
+          <div class="finderSidebarSection">Favourites</div>
+          <div id="finderSidebarItems"></div>
+        </aside>
+        <main class="finderMain">
+          <div class="finderToolbar">
+            <label class="finderSearch" for="finderSearchInput">
+              <span class="finderSearchIcon" aria-hidden="true"></span>
+              <input id="finderSearchInput" class="finderSearchInput" type="search" placeholder="Search" autocomplete="off" />
+            </label>
+          </div>
+          <div class="finderGridWrap">
+            <div id="finderGrid" class="finderGrid" tabindex="0"></div>
+            <div id="finderSelectionBox" class="finderSelectionBox"></div>
+          </div>
+        </main>
+      </div>
+      <div class="resizeHandle"></div>
+    </div>
+
     <div id="browser" style="border: solid; width: 500px; height: 400px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="browserheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
         <div id="browserclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
@@ -219,6 +1055,10 @@ html, body {
         <div id="browserfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
       </div>
       <iframe id="browserFrame" src="https://watchtheads.github.io/nasanewtabthing/" style="flex: 1; width: 100%; border: none; border-radius: 8px; background:#fff; margin-top: 4px;"></iframe>
+      <div id="browserOfflineMsg" style="display:none; flex: 1; width: 100%; border-radius: 8px; margin-top: 4px; background:#1c1c1c; align-items: center; justify-content: center; flex-direction: column; text-align: center; padding: 20px; box-sizing: border-box;">
+        <div style="font-size: 40px;">📡</div>
+        <p style="margin-top: 10px; font-size: 14px; color: #ccc;">No internet connection.<br>Connect to Wi-Fi in Settings to browse.</p>
+      </div>
       <div class="resizeHandle"></div>
     </div>
 
@@ -237,8 +1077,10 @@ html, body {
   <div class="contextMenuItem" data-action="refresh">🔄 Refresh Desktop</div>
 </div>
 
+<div id="finderContextMenu" style="display: none; position: absolute; background-color: #2b2b2b; color: #fff; border-radius: 8px; padding: 6px; z-index: 999999; box-shadow: 0 4px 12px rgba(0,0,0,0.4); min-width: 170px;"></div>
+
 <!-- photobooth window - still/4-shot/movie modes, everything gets dumped into the thumb strip at the bottom -->
-<div id="photobooth" style="border: solid; width: 500px; height: 460px; padding: 16px; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+<div id="photobooth" style="border: solid; width: 500px; height: 460px; padding: 16px; border-radius: 16px; background-color: #3A1F1F; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
   <div id="photoboothheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
     <div id="photoboothclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
     <div id="photoboothminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -286,6 +1128,15 @@ html, body {
   <img id="photoPreviewImg" style="max-width:90%; max-height:80%; border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,0.5);" />
   <button id="photoPreviewClose" style="margin-top:16px; padding:8px 16px; border-radius:8px; border:none; cursor:pointer;">Close</button>
 </div>
+<div id="textFileOverlay" style="display:none; position:absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:999998; align-items:center; justify-content:center; flex-direction:column;">
+  <div style="background:#fff; color:#000; width: 420px; height: 320px; border-radius: 10px; padding: 16px; display:flex; flex-direction:column;">
+    <input id="textFileNameInput" style="font-weight:bold; font-size:16px; border:none; margin-bottom:8px; padding:4px;" />
+    <textarea id="textFileBody" style="flex:1; border:1px solid #ccc; border-radius:6px; padding:8px; resize:none; font-family: inherit;"></textarea>
+  </div>
+  <button id="textFileClose" style="margin-top:16px; padding:8px 16px; border-radius:8px; border:none; cursor:pointer;">Close</button>
+</div>
+
+<script src="timezone-data.js"></script>
 <script src="script.js"></script>
 
 </body>
