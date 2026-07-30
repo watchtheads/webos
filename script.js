@@ -336,14 +336,14 @@ var dockDivider = document.querySelector("#dockDivider");
 var dockIcons = {};
 
 var appIcons = {
-  welcome: "./idk.jpg",
-  notes: "./notes.webp",
-  coffee: "./coffee.webp",
-  calc: "./calculator.webp",
-  settings: "./settings.webp",
+  welcome: "./idk.png",
+  notes: "./notes.png",
+  coffee: "./coffee.png",
+  calc: "./calculator.png",
+  settings: "./settings.png",
   browser: "./astrosearch.png",
-  photobooth: "./photobooth.webp",
-  explorer: "./idk.jpg"
+  photobooth: "./photobooth.png",
+  explorer: "./files.png"
 };
 
 function createDockIcon(id) {
