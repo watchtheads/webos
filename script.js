@@ -1404,6 +1404,11 @@ function openPhotobooth() {
   }
 }
 
+function openBin() {
+  openWindow(explorerScreen);
+  setCurrentFolder(finderRoots.trash, false);
+}
+
 var currentPhotoMode = "movie";
 
 document.querySelectorAll(".photoModeBtn").forEach(function(btn) {
@@ -2661,22 +2666,20 @@ renderFinder();
   var binGlyph = document.querySelector("#binDesktopIconGlyph");
   if (!binIcon) return;
 
-  binIcon.addEventListener("click", function() {
-    openWindow(explorerScreen);
-    setCurrentFolder(finderRoots.trash, false);
-  });
-
   binIcon.addEventListener("dragover", function(e) {
     if (!finderDragState) return;
     e.preventDefault();
-    binGlyph.style.background = "#4ea1ff";
+    binGlyph.style.boxShadow = "0 0 0 3px rgba(78,161,255,0.85)";
+    binGlyph.style.filter = "brightness(1.15)";
   });
   binIcon.addEventListener("dragleave", function() {
-    binGlyph.style.background = "#2b2b2b";
+    binGlyph.style.boxShadow = "";
+    binGlyph.style.filter = "";
   });
   binIcon.addEventListener("drop", function(e) {
     e.preventDefault();
-    binGlyph.style.background = "#2b2b2b";
+    binGlyph.style.boxShadow = "";
+    binGlyph.style.filter = "";
     if (!finderDragState) return;
     finderDragState.ids.forEach(function(id) {
       var item = finderState.viewItems.filter(function(i) { return i.id === id; })[0];
