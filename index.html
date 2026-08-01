@@ -343,7 +343,6 @@ body.light-mode #topBar {
 body.light-mode #topBar p {
   color: #111 !important;
 }
-body.light-mode #welcome,
 body.light-mode #notes,
 body.light-mode #coffee,
 body.light-mode #calc,
@@ -378,7 +377,11 @@ body.light-mode #taskbar {
 html, body {
   overflow: hidden;
   height: 100vh;
+  width: 100vw;
   margin: 0;
+  position: fixed;
+  top: 0;
+  left: 0;
 }
 
 /* ---- Setup Assistant ---- */
@@ -864,67 +867,52 @@ html, body {
 <!-- ================= /Setup Assistant ================= -->
 
     <div id="topBar" style="position: absolute; top: 0; width: 100%; display: flex; justify-content: space-between; backdrop-filter: blur(10px); background-color: rgba(0, 0, 0, 0.25); color: #fff; box-sizing: border-box; padding: 8px 16px;">
-      <p id="welcomeopen" style="margin: 0; cursor: pointer;">TuffOS <span style="font-size: 12px;">it's always time to eat cereal</span></p>
-      <p id="timeElement" style="margin: 0;">Time</p>
+      <div id="topBarLeft" style="display: flex; align-items: center; gap: 10px;">
+        <div id="systemMenuWrapper" style="position: relative; display: flex; align-items: center;">
+          <button id="systemMenuBtn" type="button" title="System" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px; padding: 0; font-size: 16px; line-height: 1;">🥣</button>
+          <div id="systemMenuDropdown" style="display: none; position: absolute; top: 28px; left: 0; width: 190px; background: #1f1f23; color: #fff; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); z-index: 999999; font-size: 13px; font-family: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;"></div>
+        </div>
+        <p id="topBarTitle" style="margin: 0;">TuffOS<span style="font-size: 12px;">, it's always time to eat cereal</span></p>
+      </div>
+      <div id="topBarRight" style="display: flex; align-items: center; gap: 14px;">
+        <div id="wifiMenuWrapper" style="position: relative;">
+          <button id="wifiMenuBtn" type="button" title="Wi-Fi" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; color: #fff;">
+            <svg id="wifiMenuIconOn" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12.5a10 10 0 0 1 14 0"/>
+              <path d="M8.5 16a5 5 0 0 1 7 0"/>
+              <circle cx="12" cy="19.5" r="1" fill="currentColor" stroke="none"/>
+            </svg>
+            <svg id="wifiMenuIconOff" style="display: none;" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12.5a10 10 0 0 1 5.5-2.8"/>
+              <path d="M13.5 9.7a10 10 0 0 1 5 2.8"/>
+              <path d="M8.5 16a5 5 0 0 1 4-1.5"/>
+              <path d="M14 15a5 5 0 0 1 1.5 1"/>
+              <circle cx="12" cy="19.5" r="1" fill="currentColor" stroke="none"/>
+              <line x1="3" y1="3" x2="21" y2="21"/>
+            </svg>
+          </button>
+          <div id="wifiDropdown" style="display: none; position: absolute; top: 28px; right: 0; width: 230px; background: #1f1f23; color: #fff; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); z-index: 999999; font-size: 13px; font-family: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif;">
+            <div id="wifiDropdownList"></div>
+          </div>
+        </div>
+        <p id="timeElement" style="margin: 0;">Time</p>
+
+      </div>
     </div>
 
-    <div id="desktopApps" style="padding-top: 64px; padding-left: 16px; display: flex; flex-wrap: wrap;">
-      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(notesScreen);">
-        <img src="./notes.png" style="width: 64px; height: 64px; border-radius: 16px;">
-        <p style="margin: 0px; color: #fff;">Tuff notes</p>
-      </div>
-
-      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(coffeeScreen);">
-        <img src="./coffee.png" style="width: 64px; height: 64px; border-radius: 16px;">
-        <p style="margin: 0px; color: #fff;">Coffee</p>
-      </div>
-
-      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(calcScreen);">
-        <img src="./calculator.png" style="width: 64px; height: 64px; border-radius: 16px;">
-        <p style="margin: 0px; color: #fff;">Calc short for calculator</p>
-      </div>
-
-      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(settingsScreen);">
-        <img src="./settings.png" style="width: 64px; height: 64px; border-radius: 16px;">
-        <p style="margin: 0px; color: #fff;">Settings</p>
-      </div>
-
-      <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(browserScreen);">
-        <img src="./astrosearch.png" style="width: 64px; height: 64px; border-radius: 16px;">
-        <p style="margin: 0px; color: #fff;">Browser</p>
-      </div>
-
-    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="openPhotobooth();">
-    <img src="./photobooth.png" style="width: 64px; height: 64px; border-radius: 16px;">
-    <p style="margin: 0px; color: #fff;">PhotoBooth</p>
-</div>
-
-    <div style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="toggleApp(explorerScreen);">
-    <img src="./files.png" style="width: 64px; height: 64px; border-radius: 16px;">
-    <p style="margin: 0px; color: #fff;">Files</p>
-</div>
-
-    <div id="binDesktopIcon" style="text-align: center; padding: 16px; filter: drop-shadow(0 0 8px black); width: fit-content; cursor: pointer;" onclick="openBin();">
-    <img id="binDesktopIconGlyph" src="./bin.png" style="width: 64px; height: 64px; border-radius: 16px;">
-    <p style="margin: 0px; color: #fff;">Bin</p>
-</div>
-
+    <div id="systemPowerOverlay" style="display:none; position: fixed; inset: 0; background: #000; z-index: 9999999; align-items: center; justify-content: center; flex-direction: column; color: #fff; text-align: center; cursor: pointer; font-family: 'Trattatello', Helvetica, fantasy; padding: 20px; box-sizing: border-box;">
+      <div id="systemPowerOverlayContent"></div>
     </div>
 
-    <div id="welcome" style="border: solid; width: 300px; height: 420px; padding: 16px; border-radius: 16px; background-color: #ffffff22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
-      <div id="welcomeheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
-        <div id="welcomeclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
-        <div id="welcomeminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
-        <div id="welcomefullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
-      </div>
-      <h1 style="margin: 4px;"> Welcome to my OS </h1>
-      <h2 style="margin: 4px;"> Introduction </h2>
-      <h3 style="margin: 4px;"> I like cereal </h3>
-      <p> Hello world</p>
-      <img style="width: 167px; height: 167px; object-fit: cover; border-radius: 50%;" src="./idk.jpg" />
-      <a href="https://www.instagram.com/starthackclub/">starthackclub's instagram</a>
-      <div class="resizeHandle"></div>
+    <div id="loginScreenOverlay" style="display:none; position:fixed; inset:0; background:#000; z-index:9999999; align-items:center; justify-content:center; flex-direction:column; color:#fff; font-family:'Trattatello', Helvetica, fantasy;">
+      <img id="loginScreenAvatar" style="width:90px;height:90px;border-radius:50%;object-fit:cover;background:#333;margin-bottom:14px;" />
+      <p id="loginScreenUsername" style="margin:0;font-size:20px;"></p>
+      <input id="loginScreenPassword" type="password" placeholder="Password" style="margin-top:16px;padding:8px 12px;border-radius:6px;border:none;font-size:14px;width:200px;text-align:center;" />
+      <p id="loginScreenHint" style="font-size:12px;color:#888;margin-top:8px;cursor:pointer;min-height:14px;"></p>
+      <p id="loginScreenError" style="font-size:12px;color:#ff8080;margin-top:2px;min-height:14px;"></p>
     </div>
+
+    <div id="desktopApps" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
 
     <div id="notes" style="border: solid; width: 400px; height: 300px; padding: 16px; border-radius: 16px; background-color: #1F2E22; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="notesheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">

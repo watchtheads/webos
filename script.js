@@ -1,7 +1,6 @@
 // TuffOS main script - window manager, dock, and all the little apps
 // (yes it's a lot of vanilla JS in one file, i'll split it up eventually - probably)
 
-var welcomeScreen = document.querySelector("#welcome");
 
 // floating blue rectangle that shows up when you drag a window near an edge
 var snapPreview = document.createElement("div");
@@ -33,6 +32,37 @@ function getSnapZone(x, y) {
     return { top: 0, left: 0, width: vw, height: vh };
   }
   return null;
+}
+
+// Positions a context menu (any of the little popup menus) so it never gets clipped
+// off the edge of the screen - flips above/left of the click point if it would
+// otherwise run past the bottom/right (this is why menus opened from the Dock,
+// which sits near the bottom, used to be mostly invisible).
+function positionContextMenuOnScreen(menu, x, y) {
+  menu.style.visibility = "hidden";
+  menu.style.display = "block";
+  menu.style.top = "0px";
+  menu.style.left = "0px";
+
+  var menuWidth = menu.offsetWidth;
+  var menuHeight = menu.offsetHeight;
+  var margin = 6;
+
+  var top = y;
+  if (top + menuHeight > window.innerHeight - margin) {
+    top = y - menuHeight;
+  }
+  top = Math.max(margin, Math.min(top, window.innerHeight - menuHeight - margin));
+
+  var left = x;
+  if (left + menuWidth > window.innerWidth - margin) {
+    left = x - menuWidth;
+  }
+  left = Math.max(margin, Math.min(left, window.innerWidth - menuWidth - margin));
+
+  menu.style.top = top + "px";
+  menu.style.left = left + "px";
+  menu.style.visibility = "visible";
 }
 
 var timezoneEntries = [];
@@ -155,6 +185,12 @@ function dragElement(element, disableSnap) {
     element.style.top = rect.top + "px";
     element.style.left = rect.left + "px";
 
+    // keep the header pinned visible for the whole drag while fullscreen, so it
+    // doesn't flicker away as the cursor moves down and out of the reveal zone
+    if (element.dataset.fullscreen === "true" && headerEl) {
+      headerEl.style.transform = "translateY(0)";
+    }
+
     document.onmouseup = stopDragging;
     document.onmousemove = doDrag;
   }
@@ -188,17 +224,21 @@ function dragElement(element, disableSnap) {
     document.onmouseup = null;
     document.onmousemove = null;
     snapPreview.style.display = "none";
+    var wasFullscreen = element.dataset.fullscreen === "true";
     if (pendingSnap) {
       element.style.top = pendingSnap.top + "px";
       element.style.left = pendingSnap.left + "px";
       element.style.width = pendingSnap.width + "px";
       element.style.height = pendingSnap.height + "px";
       pendingSnap = null;
+      // dragging out of fullscreen into a snap zone should actually leave fullscreen
+      // mode (restore the top bar/taskbar/header chrome) while keeping the new size
+      if (wasFullscreen) {
+        exitFullscreenKeepingBounds(element);
+      }
     }
   }
 }
-
-dragElement(document.getElementById("welcome"));
 
 // ---- resizing windows via the little corner handle ----
 function makeResizable(element) {
@@ -254,7 +294,7 @@ function bringToFront(element) {
 
 function toggleFullscreen(element) {
   var topBar = document.querySelector("#topBar");
-var taskbar = document.querySelector("#taskbar");
+  var taskbar = document.querySelector("#taskbar");
 
   if (element.dataset.fullscreen === "true") {
     element.style.width = element.dataset.prevWidth;
@@ -262,29 +302,7 @@ var taskbar = document.querySelector("#taskbar");
     element.style.top = "50%";
     element.style.left = "50%";
     element.style.transform = "translate(-50%, -50%)";
-    element.style.borderRadius = "16px";
-    element.dataset.fullscreen = "false";
-
-    topBar.style.display = "flex";
-    taskbar.style.display = "flex";
-
-    var headerEl = document.getElementById(element.id + "header");
-    if (headerEl) {
-      headerEl.style.position = "";
-      headerEl.style.top = "";
-      headerEl.style.left = "";
-      headerEl.style.right = "";
-      headerEl.style.zIndex = "";
-      headerEl.style.background = "";
-      headerEl.style.padding = "";
-      headerEl.style.borderRadius = "";
-      headerEl.style.transition = "";
-      headerEl.style.transform = "";
-      if (element._fsMouseMoveHandler) {
-        document.removeEventListener("mousemove", element._fsMouseMoveHandler);
-        element._fsMouseMoveHandler = null;
-      }
-    }
+    exitFullscreenChrome(element, topBar, taskbar);
   } else {
     element.dataset.prevWidth = element.style.width;
     element.dataset.prevHeight = element.style.height;
@@ -327,6 +345,45 @@ var taskbar = document.querySelector("#taskbar");
   }
 }
 
+// shared teardown of the fullscreen chrome (top bar, taskbar, fixed header) -
+// used both by the normal fullscreen toggle-off and by dragging a fullscreen
+// window into a snap zone, which should also exit fullscreen but keep the
+// snapped size/position instead of resetting to the centered default
+function exitFullscreenChrome(element, topBar, taskbar) {
+  topBar = topBar || document.querySelector("#topBar");
+  taskbar = taskbar || document.querySelector("#taskbar");
+
+  element.style.borderRadius = "16px";
+  element.dataset.fullscreen = "false";
+
+  topBar.style.display = "flex";
+  taskbar.style.display = "flex";
+
+  var headerEl = document.getElementById(element.id + "header");
+  if (headerEl) {
+    headerEl.style.position = "";
+    headerEl.style.top = "";
+    headerEl.style.left = "";
+    headerEl.style.right = "";
+    headerEl.style.zIndex = "";
+    headerEl.style.background = "";
+    headerEl.style.padding = "";
+    headerEl.style.borderRadius = "";
+    headerEl.style.transition = "";
+    headerEl.style.transform = "";
+    if (element._fsMouseMoveHandler) {
+      document.removeEventListener("mousemove", element._fsMouseMoveHandler);
+      element._fsMouseMoveHandler = null;
+    }
+  }
+}
+
+// used when a fullscreen window gets dragged into a snap zone - exits fullscreen
+// state and chrome without touching the width/height/position already applied
+function exitFullscreenKeepingBounds(element) {
+  exitFullscreenChrome(element);
+}
+
 var appScreens = {};
 
 var taskbar = document.querySelector("#taskbar");
@@ -335,16 +392,43 @@ var dockMinimizedApps = document.querySelector("#dockMinimizedApps");
 var dockDivider = document.querySelector("#dockDivider");
 var dockIcons = {};
 
+function loadDockRemovedIds() {
+  try {
+    var raw = localStorage.getItem("tuffos-dock-removed");
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+function saveDockRemovedIds() {
+  localStorage.setItem("tuffos-dock-removed", JSON.stringify(dockRemovedIds));
+}
+var dockRemovedIds = loadDockRemovedIds();
+
 var appIcons = {
-  welcome: "./idk.png",
   notes: "./notes.png",
   coffee: "./coffee.png",
   calc: "./calculator.png",
   settings: "./settings.png",
   browser: "./astrosearch.png",
   photobooth: "./photobooth.png",
-  explorer: "./files.png"
+  explorer: "./files.png",
+  bin: "./bin.png"
 };
+
+var appLabels = {
+  notes: "Tuff notes",
+  coffee: "Coffee",
+  calc: "Calc short for calculator",
+  settings: "Settings",
+  browser: "Browser",
+  photobooth: "PhotoBooth",
+  explorer: "Files",
+  bin: "Bin"
+};
+
+// set while an app icon (from the dock, Files, or the desktop itself) is being dragged around
+var appDragPayload = null;
 
 function createDockIcon(id) {
   var wrapper = document.createElement("div");
@@ -354,7 +438,7 @@ function createDockIcon(id) {
   wrapper.style.cursor = "pointer";
 
   var icon = document.createElement("img");
-  icon.src = appIcons[id] || "./notes.webp";
+  icon.src = appIcons[id] || "./notes.png";
   icon.style.width = "40px";
   icon.style.height = "40px";
   icon.style.borderRadius = "10px";
@@ -372,7 +456,21 @@ function createDockIcon(id) {
   wrapper.appendChild(icon);
   wrapper.appendChild(dot);
 
+  wrapper.draggable = true;
+  wrapper.addEventListener("dragstart", function(e) {
+    appDragPayload = { id: id };
+    e.dataTransfer.effectAllowed = "move";
+    try { e.dataTransfer.setData("text/plain", id); } catch (err) {}
+  });
+  wrapper.addEventListener("dragend", function() {
+    appDragPayload = null;
+  });
+
   wrapper.addEventListener("click", function() {
+    if (id === "bin") {
+      openBin();
+      return;
+    }
     var screen = appScreens[id];
     if (!screen) return;
     if (screen.style.display === "flex") {
@@ -383,26 +481,273 @@ function createDockIcon(id) {
     }
   });
 
+  wrapper.addEventListener("contextmenu", function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    showDockIconContextMenu(e.pageX, e.pageY, id);
+  });
+
   dockIcons[id] = wrapper;
   return wrapper;
 }
 
-// build a dock icon for every app up front, even before its window opens
-for (var appId in appIcons) {
-  dockOpenApps.appendChild(createDockIcon(appId));
+// right-click menu for a dock icon
+function showDockIconContextMenu(x, y, id) {
+  var menu = document.querySelector("#finderContextMenu");
+  if (!menu) return;
+  menu.innerHTML = "";
+
+  var openRow = document.createElement("div");
+  openRow.className = "contextMenuItem";
+  openRow.textContent = "📂 Open";
+  openRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    if (id === "bin") { openBin(); return; }
+    openDesktopApp(id);
+  });
+
+  menu.appendChild(openRow);
+
+  if (id !== "bin") {
+    var removeRow = document.createElement("div");
+    removeRow.className = "contextMenuItem";
+    removeRow.textContent = "🗑️ Remove from Dock";
+    removeRow.addEventListener("click", function() {
+      menu.style.display = "none";
+      removeFromDock(id);
+    });
+    menu.appendChild(removeRow);
+  }
+
+  positionContextMenuOnScreen(menu, x, y);
 }
 
+// pulls an icon off the Dock entirely (it's still reachable from the Desktop
+// or Files > Applications, this just un-pins it)
+function removeFromDock(id) {
+  if (id === "bin") return; // Bin can't be removed from the Dock - it's the way to reach Trash
+  if (!dockIcons[id]) return;
+  dockIcons[id].remove();
+  delete dockIcons[id];
+  if (dockRemovedIds.indexOf(id) === -1) {
+    dockRemovedIds.push(id);
+    saveDockRemovedIds();
+  }
+  updateDivider();
+}
+
+// re-pins an icon to the Dock (used when something with a dock icon gets
+// restored from Trash)
+function addToDock(id) {
+  if (dockIcons[id] || !appIcons[id]) return;
+  var idx = dockRemovedIds.indexOf(id);
+  if (idx !== -1) {
+    dockRemovedIds.splice(idx, 1);
+    saveDockRemovedIds();
+  }
+  var screen = appScreens[id];
+  var isOpen = screen && screen.style.display === "flex";
+  var icon = createDockIcon(id);
+  // icons always live in the normal Dock section - the minimized section (right
+  // of the divider) is only for windows that were explicitly minimized
+  dockOpenApps.appendChild(icon);
+  icon.querySelector(".dockDot").style.visibility = isOpen ? "visible" : "hidden";
+  updateDivider();
+}
+
+// build a dock icon for every app up front, even before its window opens -
+// skipping any the user has removed from the Dock
+for (var appId in appIcons) {
+  if (dockRemovedIds.indexOf(appId) === -1) {
+    dockOpenApps.appendChild(createDockIcon(appId));
+  }
+}
+
+// ---- Desktop icons ----
+// Nothing lives on the desktop by default - apps only start out in the Dock and
+// the Files app (under Applications). Dragging an icon from either of those onto
+// the desktop drops a shortcut wherever you release it. Positions persist in
+// localStorage so they stay put between visits.
+var desktopAppsEl = document.querySelector("#desktopApps");
+var desktopIconEls = {};
+
+function loadDesktopIconPositions() {
+  try {
+    var raw = localStorage.getItem("tuffos-desktop-icons");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveDesktopIconPositions(positions) {
+  localStorage.setItem("tuffos-desktop-icons", JSON.stringify(positions));
+}
+
+var desktopIconPositions = loadDesktopIconPositions();
+
+function openDesktopApp(id) {
+  if (id === "bin") {
+    openBin();
+    return;
+  }
+  var screen = appScreens[id];
+  if (!screen) return;
+  if (screen.style.display === "flex") {
+    bringToFront(screen);
+  } else {
+    openWindow(screen);
+    if (id === "photobooth") startCamera();
+  }
+}
+
+function placeDesktopIcon(id, clientX, clientY) {
+  if (!appIcons[id]) return;
+  var iconSize = 64;
+  var maxX = window.innerWidth - iconSize - 16;
+  var maxY = window.innerHeight - iconSize - 16;
+  var x = Math.min(Math.max(clientX - iconSize / 2, 8), Math.max(8, maxX));
+  var y = Math.min(Math.max(clientY - iconSize / 2, 56), Math.max(56, maxY));
+  desktopIconPositions[id] = { x: x, y: y };
+  saveDesktopIconPositions(desktopIconPositions);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+function removeDesktopIcon(id) {
+  delete desktopIconPositions[id];
+  saveDesktopIconPositions(desktopIconPositions);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+// Files app may already be open and looking at the Desktop folder - keep it in sync
+function refreshFinderIfViewingDesktop() {
+  if (typeof finderState !== "undefined" && finderState.currentFolder && finderState.currentFolder.id === "desktop") {
+    renderFinder();
+  }
+}
+
+// right-click menu for a desktop shortcut - reuses the Finder context menu element
+// since it's already wired to hide on any body click
+function showDesktopIconContextMenu(x, y, id) {
+  var menu = document.querySelector("#finderContextMenu");
+  if (!menu) return;
+  menu.innerHTML = "";
+
+  var openRow = document.createElement("div");
+  openRow.className = "contextMenuItem";
+  openRow.textContent = "📂 Open";
+  openRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    openDesktopApp(id);
+  });
+
+  var removeRow = document.createElement("div");
+  removeRow.className = "contextMenuItem";
+  removeRow.textContent = "🗑️ Remove from Desktop";
+  removeRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    removeDesktopIcon(id);
+  });
+
+  menu.appendChild(openRow);
+  menu.appendChild(removeRow);
+  positionContextMenuOnScreen(menu, x, y);
+}
+
+function renderDesktopIcons() {
+  desktopAppsEl.innerHTML = "";
+  desktopIconEls = {};
+
+  Object.keys(desktopIconPositions).forEach(function(id) {
+    if (!appIcons[id]) return; // app no longer exists - don't render a dead shortcut
+    var pos = desktopIconPositions[id];
+
+    var wrapper = document.createElement("div");
+    wrapper.style.position = "absolute";
+    wrapper.style.left = pos.x + "px";
+    wrapper.style.top = pos.y + "px";
+    wrapper.style.width = "88px";
+    wrapper.style.textAlign = "center";
+    wrapper.style.padding = "8px";
+    wrapper.style.filter = "drop-shadow(0 0 8px black)";
+    wrapper.style.cursor = "pointer";
+    wrapper.style.pointerEvents = "auto";
+    wrapper.draggable = true;
+
+    var img = document.createElement("img");
+    img.src = appIcons[id];
+    img.style.width = "64px";
+    img.style.height = "64px";
+    img.style.borderRadius = "16px";
+
+    var label = document.createElement("p");
+    label.style.margin = "0px";
+    label.style.color = "#fff";
+    label.textContent = appLabels[id] || id;
+
+    wrapper.appendChild(img);
+    wrapper.appendChild(label);
+
+    wrapper.addEventListener("dragstart", function(e) {
+      appDragPayload = { id: id };
+      e.dataTransfer.effectAllowed = "move";
+      try { e.dataTransfer.setData("text/plain", id); } catch (err) {}
+    });
+    wrapper.addEventListener("dragend", function() {
+      appDragPayload = null;
+    });
+    wrapper.addEventListener("click", function() {
+      openDesktopApp(id);
+    });
+    wrapper.addEventListener("contextmenu", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+      showDesktopIconContextMenu(e.pageX, e.pageY, id);
+    });
+
+    desktopIconEls[id] = wrapper;
+    desktopAppsEl.appendChild(wrapper);
+  });
+}
+
+// dropping an app icon anywhere on the bare desktop (not on a window, the dock,
+// or a Finder window) places/moves its shortcut there
+document.body.addEventListener("dragover", function(e) {
+  if (!appDragPayload) return;
+  if (e.target !== document.body && e.target !== desktopAppsEl) return;
+  e.preventDefault();
+});
+document.body.addEventListener("drop", function(e) {
+  if (!appDragPayload) return;
+  if (e.target !== document.body && e.target !== desktopAppsEl) {
+    appDragPayload = null;
+    return;
+  }
+  e.preventDefault();
+  placeDesktopIcon(appDragPayload.id, e.clientX, e.clientY);
+  appDragPayload = null;
+});
+
+renderDesktopIcons();
+
+
 function refreshDockDot(element) {
-  var dot = dockIcons[element.id].querySelector(".dockDot");
+  var iconEl = dockIcons[element.id];
+  if (!iconEl) return; // app isn't pinned to the Dock right now
+  var dot = iconEl.querySelector(".dockDot");
   dot.style.visibility = element.style.display === "flex" ? "visible" : "hidden";
 }
 
 function moveToMinimizedDock(id) {
+  if (!dockIcons[id]) return;
   dockMinimizedApps.appendChild(dockIcons[id]);
   updateDivider();
 }
 
 function moveToOpenDock(id) {
+  if (!dockIcons[id]) return;
   dockOpenApps.appendChild(dockIcons[id]);
   updateDivider();
 }
@@ -426,6 +771,11 @@ function openWindow(element) {
 
 function minimizeWindow(element) {
   var iconWrapper = dockIcons[element.id];
+  if (!iconWrapper) {
+    // not pinned to the Dock - just hide the window, no minimize-to-dock animation
+    element.style.display = "none";
+    return;
+  }
   var iconRect = iconWrapper.getBoundingClientRect();
   var winRect = element.getBoundingClientRect();
 
@@ -468,32 +818,6 @@ function toggleApp(screen) {
     openWindow(screen);
   }
 }
-
-var welcomeScreenClose = document.querySelector("#welcomeclose");
-var welcomeScreenOpen = document.querySelector("#welcomeopen");
-var welcomeScreenMinimize = document.querySelector("#welcomeminimize");
-var welcomeScreenFullscreen = document.querySelector("#welcomefullscreen");
-appScreens["welcome"] = welcomeScreen;
-
-welcomeScreenClose.addEventListener("click", function() {
-  closeWindow(welcomeScreen);
-});
-
-welcomeScreenMinimize.addEventListener("click", function() {
-  minimizeWindow(welcomeScreen);
-});
-
-welcomeScreenFullscreen.addEventListener("click", function() {
-  toggleFullscreen(welcomeScreen);
-});
-
-welcomeScreenOpen.addEventListener("click", function() {
-  openWindow(welcomeScreen);
-});
-
-welcomeScreen.addEventListener("mousedown", function() {
-  bringToFront(welcomeScreen);
-});
 
 dragElement(document.querySelector("#notes"));
 
@@ -784,25 +1108,45 @@ browserScreen.addEventListener("mousedown", function() {
   bringToFront(browserScreen);
 });
 
-// show the "no internet" placeholder instead of the iframe if wifi was never connected during setup
-(function() {
+// ---- shared Wi-Fi connection state (used by the topbar Wi-Fi menu, the Setup
+// Assistant's Wi-Fi step, and the Browser app's online/offline placeholder) ----
+function isWifiConnected() {
+  return localStorage.getItem("tuffos-wifi-connected") === "true";
+}
+function getConnectedWifiName() {
+  return localStorage.getItem("tuffos-wifi-network") || "";
+}
+function setWifiConnected(connected, networkName) {
+  if (connected) {
+    localStorage.setItem("tuffos-wifi-connected", "true");
+    localStorage.setItem("tuffos-wifi-network", networkName || "");
+  } else {
+    localStorage.setItem("tuffos-wifi-connected", "false");
+    localStorage.removeItem("tuffos-wifi-network");
+  }
+  refreshBrowserOnlineState();
+  refreshWifiTopbarIcon();
+}
+function refreshBrowserOnlineState() {
   var browserFrame = document.querySelector("#browserFrame");
   var browserOfflineMsg = document.querySelector("#browserOfflineMsg");
-  var wifiConnectedFlag = localStorage.getItem("tuffos-wifi-connected") === "true";
-  if (!wifiConnectedFlag) {
+  if (!browserFrame || !browserOfflineMsg) return;
+  if (isWifiConnected()) {
+    browserFrame.style.display = "";
+    browserOfflineMsg.style.display = "none";
+  } else {
     browserFrame.style.display = "none";
     browserOfflineMsg.style.display = "flex";
   }
-})();
+}
+refreshBrowserOnlineState(); // reflect whatever was set up (or not) during setup
 
 // ---- right click menu on the desktop ----
 var contextMenu = document.querySelector("#contextMenu");
 
 document.body.addEventListener("contextmenu", function(e) {
   e.preventDefault();
-  contextMenu.style.display = "block";
-  contextMenu.style.top = e.pageY + "px";
-  contextMenu.style.left = e.pageX + "px";
+  positionContextMenuOnScreen(contextMenu, e.pageX, e.pageY);
 });
 
 document.body.addEventListener("click", function() {
@@ -822,7 +1166,7 @@ document.querySelectorAll(".contextMenuItem").forEach(function(item) {
 });
 
 // hook up resizing on everything except the calculator, too lazy to call this individually per window
-["welcome", "notes", "coffee", "settings", "browser", "photobooth", "explorer"].forEach(function(id) {
+["notes", "coffee", "settings", "browser", "photobooth", "explorer"].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) makeResizable(el);
 });
@@ -1059,8 +1403,8 @@ setupFakeWifiNetworks.forEach(function(net) {
     setTimeout(function() {
       statusSpan.textContent = "Connected";
       setupWifiContinueBtn.disabled = false;
-      localStorage.setItem("tuffos-wifi-connected", "true");
-      localStorage.setItem("tuffos-wifi-network", net.name);
+      setWifiConnected(true, net.name);
+      refreshTopbarWifiDropdownIfOpen();
     }, 1000);
   });
   setupWifiRows[net.name] = row;
@@ -1070,9 +1414,9 @@ setupFakeWifiNetworks.forEach(function(net) {
 setupWifiNotNowRadio.addEventListener("change", function() {
   if (setupWifiNotNowRadio.checked) {
     Object.keys(setupWifiRows).forEach(function(n) { setupWifiRows[n].classList.remove("setupWifiActive"); });
-    localStorage.setItem("tuffos-wifi-connected", "false");
-    localStorage.removeItem("tuffos-wifi-network");
+    setWifiConnected(false);
     setupWifiContinueBtn.disabled = false;
+    refreshTopbarWifiDropdownIfOpen();
   }
 });
 
@@ -1081,7 +1425,306 @@ setupWifiContinueBtn.addEventListener("click", function() {
   goToSetupStep("migrate");
 });
 
-// ---- Migration Assistant step ----
+// ---- Topbar Wi-Fi menu (click the Wi-Fi icon next to the clock) ----
+var wifiMenuBtn = document.querySelector("#wifiMenuBtn");
+var wifiDropdown = document.querySelector("#wifiDropdown");
+var wifiDropdownList = document.querySelector("#wifiDropdownList");
+var wifiMenuIconOn = document.querySelector("#wifiMenuIconOn");
+var wifiMenuIconOff = document.querySelector("#wifiMenuIconOff");
+var wifiTopbarConnecting = false;
+
+function refreshWifiTopbarIcon() {
+  var connected = isWifiConnected();
+  if (wifiMenuIconOn) wifiMenuIconOn.style.display = connected ? "block" : "none";
+  if (wifiMenuIconOff) wifiMenuIconOff.style.display = connected ? "none" : "block";
+}
+
+function renderWifiDropdown() {
+  if (!wifiDropdownList) return;
+  wifiDropdownList.innerHTML = "";
+
+  var header = document.createElement("div");
+  header.style.cssText = "padding:6px 10px 8px 10px; font-weight:700; font-size:11px; color:#a5a5ac; letter-spacing:0.06em; text-transform:uppercase;";
+  header.textContent = "Wi-Fi Network";
+  wifiDropdownList.appendChild(header);
+
+  var connectedName = getConnectedWifiName();
+
+  setupFakeWifiNetworks.forEach(function(net) {
+    var row = document.createElement("div");
+    row.className = "setupWifiRow" + (connectedName === net.name ? " setupWifiActive" : "");
+
+    var label = document.createElement("span");
+    label.textContent = net.name;
+
+    var status = document.createElement("span");
+    status.style.color = "#888";
+    status.style.fontSize = "11px";
+    status.textContent = connectedName === net.name ? "Connected" : "▂▄▆█".slice(0, net.bars);
+
+    row.appendChild(label);
+    row.appendChild(status);
+
+    row.addEventListener("click", function() {
+      if (wifiTopbarConnecting || connectedName === net.name) return;
+      wifiTopbarConnecting = true;
+      status.textContent = "Connecting...";
+      setTimeout(function() {
+        wifiTopbarConnecting = false;
+        setWifiConnected(true, net.name);
+        renderWifiDropdown();
+        refreshSetupWifiRowsIfOpen();
+      }, 800);
+    });
+
+    wifiDropdownList.appendChild(row);
+  });
+
+  if (connectedName) {
+    var divider = document.createElement("div");
+    divider.style.cssText = "height:1px; background:rgba(255,255,255,0.1); margin:6px 4px;";
+    wifiDropdownList.appendChild(divider);
+
+    var offRow = document.createElement("div");
+    offRow.className = "setupWifiRow";
+    offRow.style.justifyContent = "center";
+    offRow.style.color = "#ff8080";
+    offRow.textContent = "Turn Wi-Fi Off";
+    offRow.addEventListener("click", function() {
+      setWifiConnected(false);
+      renderWifiDropdown();
+      refreshSetupWifiRowsIfOpen();
+    });
+    wifiDropdownList.appendChild(offRow);
+  }
+}
+
+function refreshTopbarWifiDropdownIfOpen() {
+  if (wifiDropdown && wifiDropdown.style.display === "block") renderWifiDropdown();
+}
+
+// keeps the Setup Assistant's own Wi-Fi step list visually in sync if a
+// connection was made from the topbar menu while the wizard happens to be open
+function refreshSetupWifiRowsIfOpen() {
+  if (!setupWifiRows) return;
+  var connectedName = getConnectedWifiName();
+  Object.keys(setupWifiRows).forEach(function(name) {
+    var row = setupWifiRows[name];
+    row.classList.toggle("setupWifiActive", name === connectedName);
+    var statusSpan = row.querySelector("span:last-child");
+    if (statusSpan) {
+      var net = setupFakeWifiNetworks.filter(function(n) { return n.name === name; })[0];
+      statusSpan.textContent = name === connectedName ? "Connected" : (net ? "▂▄▆█".slice(0, net.bars) : "");
+    }
+  });
+  if (setupWifiContinueBtn) setupWifiContinueBtn.disabled = false;
+}
+
+function toggleWifiDropdown(forceState) {
+  if (!wifiDropdown) return;
+  var isOpen = wifiDropdown.style.display === "block";
+  var shouldOpen = typeof forceState === "boolean" ? forceState : !isOpen;
+  if (shouldOpen) {
+    renderWifiDropdown();
+    wifiDropdown.style.display = "block";
+  } else {
+    wifiDropdown.style.display = "none";
+  }
+}
+
+if (wifiMenuBtn) {
+  wifiMenuBtn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    toggleWifiDropdown();
+  });
+}
+
+document.addEventListener("click", function(e) {
+  if (!wifiDropdown || wifiDropdown.style.display !== "block") return;
+  if (e.target.closest("#wifiMenuWrapper")) return;
+  toggleWifiDropdown(false);
+});
+
+refreshWifiTopbarIcon();
+
+// ---- Topbar System menu (🥣 button, top-left) - Lock/Sleep/Restart/Shut Down ----
+var systemMenuBtn = document.querySelector("#systemMenuBtn");
+var systemMenuDropdown = document.querySelector("#systemMenuDropdown");
+var systemPowerOverlay = document.querySelector("#systemPowerOverlay");
+var systemPowerOverlayContent = document.querySelector("#systemPowerOverlayContent");
+
+function renderSystemMenu() {
+  if (!systemMenuDropdown) return;
+  systemMenuDropdown.innerHTML = "";
+
+  var items = [
+    { label: "🔒 Lock Screen", action: showLockScreen },
+    { label: "😴 Sleep", action: showSleepScreen },
+    { label: "🔁 Restart", action: doRestart },
+    { label: "⏻ Shut Down", action: showShutdownScreen }
+  ];
+
+  items.forEach(function(entry) {
+    var row = document.createElement("div");
+    row.className = "contextMenuItem";
+    row.textContent = entry.label;
+    row.addEventListener("click", function() {
+      toggleSystemMenu(false);
+      entry.action();
+    });
+    systemMenuDropdown.appendChild(row);
+  });
+}
+
+function toggleSystemMenu(forceState) {
+  if (!systemMenuDropdown) return;
+  var isOpen = systemMenuDropdown.style.display === "block";
+  var shouldOpen = typeof forceState === "boolean" ? forceState : !isOpen;
+  if (shouldOpen) {
+    renderSystemMenu();
+    systemMenuDropdown.style.display = "block";
+  } else {
+    systemMenuDropdown.style.display = "none";
+  }
+}
+
+if (systemMenuBtn) {
+  systemMenuBtn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    toggleSystemMenu();
+  });
+}
+
+document.addEventListener("click", function(e) {
+  if (!systemMenuDropdown || systemMenuDropdown.style.display !== "block") return;
+  if (e.target.closest("#systemMenuWrapper")) return;
+  toggleSystemMenu(false);
+});
+
+// shows the shared full-screen overlay; clicking it dismisses it (and optionally
+// runs a callback, e.g. reloading for Shut Down's "power back on")
+function showPowerOverlay(html, onDismiss) {
+  if (!systemPowerOverlay || !systemPowerOverlayContent) return;
+  systemPowerOverlayContent.innerHTML = html;
+  systemPowerOverlay.style.display = "flex";
+  systemPowerOverlay.onclick = function() {
+    systemPowerOverlay.style.display = "none";
+    systemPowerOverlay.onclick = null;
+    if (onDismiss) onDismiss();
+  };
+}
+
+// ---- Login screen (used by Lock, and after Shut Down / Restart finish loading) ----
+var loginScreenOverlay = document.querySelector("#loginScreenOverlay");
+var loginScreenAvatar = document.querySelector("#loginScreenAvatar");
+var loginScreenUsername = document.querySelector("#loginScreenUsername");
+var loginScreenPassword = document.querySelector("#loginScreenPassword");
+var loginScreenHint = document.querySelector("#loginScreenHint");
+var loginScreenError = document.querySelector("#loginScreenError");
+
+function showLoginScreen() {
+  var username = localStorage.getItem("tuffos-username") || "";
+  var avatar = localStorage.getItem("tuffos-avatar") || "./idk.jpg";
+  var hint = localStorage.getItem("tuffos-password-hint") || "";
+
+  loginScreenAvatar.src = avatar;
+  loginScreenUsername.textContent = username;
+  loginScreenPassword.value = "";
+  loginScreenError.textContent = "";
+  loginScreenHint.textContent = hint ? "Show Hint" : "";
+  loginScreenHint.onclick = function () {
+    loginScreenHint.textContent = hint ? "Hint: " + hint : "";
+  };
+
+  loginScreenOverlay.style.display = "flex";
+  loginScreenPassword.focus();
+
+  function onKeydown(e) {
+    if (e.key !== "Enter") return;
+    var storedPassword = localStorage.getItem("tuffos-password") || "";
+    if (loginScreenPassword.value === storedPassword) {
+      loginScreenOverlay.style.display = "none";
+      loginScreenPassword.removeEventListener("keydown", onKeydown);
+    } else {
+      loginScreenError.textContent = "Incorrect password.";
+      loginScreenPassword.value = "";
+      loginScreenPassword.focus();
+    }
+  }
+  loginScreenPassword.addEventListener("keydown", onKeydown);
+}
+
+function showLockScreen() {
+  showLoginScreen();
+}
+
+// ---- Sleep: screen goes black, any key press or mouse move wakes it right back up ----
+function showSleepScreen() {
+  systemPowerOverlayContent.innerHTML = "";
+  systemPowerOverlay.style.display = "flex";
+  systemPowerOverlay.onclick = null;
+
+  function wake() {
+    document.removeEventListener("mousemove", wake);
+    document.removeEventListener("keydown", wake);
+    systemPowerOverlay.style.display = "none";
+  }
+  // tiny delay so the click that opened Sleep from the menu doesn't instantly wake it
+  setTimeout(function () {
+    document.addEventListener("mousemove", wake);
+    document.addEventListener("keydown", wake);
+  }, 150);
+}
+
+// ---- Shut Down: goes black/off, waits for input, then boots back up to the login screen ----
+function showShutdownScreen() {
+  systemPowerOverlayContent.innerHTML = "";
+  systemPowerOverlay.style.display = "flex";
+  systemPowerOverlay.onclick = null;
+
+  function wake() {
+    document.removeEventListener("mousemove", wake);
+    document.removeEventListener("keydown", wake);
+    runBootLoadingThenLogin();
+  }
+  setTimeout(function () {
+    document.addEventListener("mousemove", wake);
+    document.addEventListener("keydown", wake);
+  }, 150);
+}
+
+// ---- Restart: same boot loading as Shut Down, but kicks off immediately ----
+function doRestart() {
+  systemPowerOverlay.style.display = "flex";
+  systemPowerOverlay.onclick = null;
+  runBootLoadingThenLogin();
+}
+
+// shared boot sequence: progress bar for 15-30s, then drop into the login screen
+function runBootLoadingThenLogin() {
+  systemPowerOverlayContent.innerHTML =
+    '<h1 style="margin: 0; font-size: 30px;">TuffOS</h1>' +
+    '<div style="margin: 24px auto 0 auto; width: 160px; height: 4px; background-color: #333; border-radius: 4px; overflow: hidden;">' +
+    '<div id="powerBootBar" style="width: 0%; height: 100%; background-color: #fff; border-radius: 4px;"></div></div>';
+
+  var bar = document.querySelector("#powerBootBar");
+  var duration = 15000 + Math.random() * 15000; // 15-30s
+  bar.style.transition = "width " + (duration / 1000) + "s linear";
+
+  requestAnimationFrame(function () {
+    requestAnimationFrame(function () {
+      bar.style.width = "100%";
+    });
+  });
+
+  setTimeout(function () {
+    systemPowerOverlay.style.display = "none";
+    systemPowerOverlayContent.innerHTML = "";
+    showLoginScreen();
+  }, duration);
+}
+
+
 var setupMigrateDropZone = document.querySelector("#setupMigrateDropZone");
 var setupMigrateFileInput = document.querySelector("#setupMigrateFileInput");
 var setupMigrateStatus = document.querySelector("#setupMigrateStatus");
@@ -1104,6 +1747,8 @@ function restoreSetupBackupFile(file) {
       });
       setupMigrateStatus.textContent = "✓ Backup Restored Successfully";
       setupMigrateStatus.style.color = "#6bd97a";
+      refreshBrowserOnlineState();
+      refreshWifiTopbarIcon();
     } catch (e) {
       setupMigrateStatus.textContent = "That doesn't appear to be a valid TuffOS backup.";
       setupMigrateStatus.style.color = "#ff8080";
@@ -1327,11 +1972,9 @@ document.querySelector("#setupFinishBtn").addEventListener("click", function() {
 });
 
 function updateTopBarGreeting() {
-  var username = localStorage.getItem("tuffos-username");
-  if (!username) return;
-  document.querySelector("#welcomeopen").innerHTML = "TuffOS <span style=\"font-size: 12px;\">hey " + username + ", it's always time to eat cereal</span>";
+  document.querySelector("#topBarTitle").innerHTML = "TuffOS<span style=\"font-size: 12px;\">, it's always time to eat cereal</span>";
 }
-updateTopBarGreeting(); // in case setup was already done in a past visit
+updateTopBarGreeting(); // normalize in case an older visit set a "hey <username>" greeting
 
 function applyAvatarToTopBar() {
   // placeholder hook - avatar is stored in localStorage as tuffos-avatar if a future
@@ -1738,6 +2381,7 @@ var finderState = {
 var finderTrashItems = [];
 var finderNodeIdCounter = 0;
 var finderDragState = null; // { ids: [...] } while a drag from the grid is in progress
+var finderIconPositions = {}; // { folderId: { itemId: {x, y} } } - free-placement layout per folder, once used
 
 appScreens["explorer"] = explorerScreen;
 
@@ -1793,25 +2437,19 @@ function buildFinderRoots() {
       createFinderNode({ name: "Settings", type: "file", kind: "app", association: "settings" }),
       createFinderNode({ name: "Browser", type: "file", kind: "app", association: "browser" }),
       createFinderNode({ name: "Photo Booth", type: "file", kind: "app", association: "photobooth" }),
-      createFinderNode({ name: "Files", type: "file", kind: "app", association: "explorer" })
+      createFinderNode({ name: "Files", type: "file", kind: "app", association: "explorer" }),
+      createFinderNode({ name: "Bin", type: "file", kind: "app", association: "bin" })
     ]
   });
 
-  // Desktop folder mirrors what's actually sitting on the OS desktop - the app icons
+  // Desktop folder mirrors what's actually sitting on the OS desktop - populated
+  // dynamically in getFolderItems() from desktopIconPositions, not hardcoded here
   var desktop = createFinderNode({
     id: "desktop",
     name: "Desktop",
     type: "folder",
     kind: "folder",
-    children: [
-      createFinderNode({ name: "Tuff notes", type: "file", kind: "app", association: "notes" }),
-      createFinderNode({ name: "Coffee", type: "file", kind: "app", association: "coffee" }),
-      createFinderNode({ name: "Calc short for calculator", type: "file", kind: "app", association: "calc" }),
-      createFinderNode({ name: "Settings", type: "file", kind: "app", association: "settings" }),
-      createFinderNode({ name: "Browser", type: "file", kind: "app", association: "browser" }),
-      createFinderNode({ name: "PhotoBooth", type: "file", kind: "app", association: "photobooth" }),
-      createFinderNode({ name: "Files", type: "file", kind: "app", association: "explorer" })
-    ]
+    children: []
   });
 
   var documents = createFinderNode({
@@ -1949,6 +2587,19 @@ function addFinderFileToFolder(folder, node) {
 
 function getFolderItems(folder) {
   if (!folder) return [];
+  if (folder.id === "desktop") {
+    return Object.keys(desktopIconPositions).filter(function(id) {
+      return !!appIcons[id];
+    }).map(function(id) {
+      return createFinderNode({
+        id: "desktop:" + id,
+        name: appLabels[id] || id,
+        type: "file",
+        kind: "app",
+        association: id
+      });
+    });
+  }
   if (folder.id === "documents") {
     var docs = loadTextDocs();
     var dynamicDocs = Object.keys(docs).sort(function(a, b) {
@@ -2001,7 +2652,7 @@ function setCurrentFolder(folder, keepSearch) {
   finderState.anchorId = null;
   finderState.focusId = null;
   renderFinder();
-  finderGridEl.focus();
+  finderGridEl.focus({ preventScroll: true });
 }
 
 function getVisibleItems() {
@@ -2067,8 +2718,8 @@ function openFinderItem(item) {
     return;
   }
 
-  if (item.kind === "app" && item.association && appScreens[item.association]) {
-    openWindow(appScreens[item.association]);
+  if (item.kind === "app" && item.association) {
+    openDesktopApp(item.association);
     return;
   }
 
@@ -2135,6 +2786,7 @@ function removeItemFromFolder(folder, item) {
 }
 
 function moveFinderItemToTrash(item, sourceFolder) {
+  if (item && item.association === "bin") return; // can't trash the Trash itself
   var folder = sourceFolder || item.parent || finderState.currentFolder;
 
   if (folder.id === "trash") {
@@ -2147,8 +2799,21 @@ function moveFinderItemToTrash(item, sourceFolder) {
     folderId: folder.id,
     index: getFolderItems(folder).findIndex(function(entry) { return entry.id === item.id; })
   };
-  removeItemFromFolder(folder, item);
+
+  if (folder.id === "desktop" && item.kind === "app" && item.association) {
+    delete desktopIconPositions[item.association];
+    saveDesktopIconPositions(desktopIconPositions);
+    renderDesktopIcons();
+  } else {
+    removeItemFromFolder(folder, item);
+  }
+
   finderTrashItems.unshift(cloneForTrash(item, origin));
+
+  // deleting an app shortcut in Files un-pins it from the Dock too
+  if (item.kind === "app" && item.association) {
+    removeFromDock(item.association);
+  }
 }
 
 function moveFinderItem(item, destinationFolder) {
@@ -2199,10 +2864,20 @@ function restoreTrashItem(item) {
     var docs = loadTextDocs();
     docs[item.name] = item.content || "";
     saveTextDocs(docs);
+  } else if (destinationFolder.id === "desktop" && item.kind === "app" && item.association) {
+    // Desktop's contents come from desktopIconPositions, not folder.children
+    if (!desktopIconPositions[item.association]) {
+      placeDesktopIcon(item.association, window.innerWidth / 2, window.innerHeight / 2);
+    }
   } else if (destinationFolder.children) {
     var insertIndex = Math.max(0, Math.min(item.trashOrigin.index, destinationFolder.children.length));
     item.parent = destinationFolder;
     destinationFolder.children.splice(insertIndex, 0, item);
+  }
+
+  // restoring an app shortcut re-pins it to the Dock
+  if (item.kind === "app" && item.association) {
+    addToDock(item.association);
   }
 }
 
@@ -2333,6 +3008,12 @@ function renderFinder() {
   finderGridEl.innerHTML = "";
   finderSelectionBoxEl.style.display = "none";
 
+  var layoutFolderId = finderState.currentFolder.id;
+  var iconPositions = finderIconPositions[layoutFolderId] || {};
+  var hasFreeLayout = Object.keys(iconPositions).length > 0 && layoutFolderId !== "trash";
+  finderGridEl.style.display = hasFreeLayout ? "block" : "grid";
+  finderGridEl.style.position = "relative";
+
   if (!finderState.viewItems.length) {
     var empty = document.createElement("div");
     empty.className = "finderEmptyState";
@@ -2341,13 +3022,24 @@ function renderFinder() {
     return;
   }
 
-  finderState.viewItems.forEach(function(item) {
+  finderState.viewItems.forEach(function(item, itemIndex) {
     var button = document.createElement("button");
     button.type = "button";
     button.className = "finderItem" + (item.type === "folder" ? " folder" : "") + (finderState.selectedIds.indexOf(item.id) >= 0 ? " selected" : "") + (finderState.focusId === item.id ? " focused" : "");
     button.dataset.itemId = item.id;
     button.innerHTML = finderItemMarkup(item);
     button.draggable = finderState.currentFolder.id !== "trash";
+
+    if (hasFreeLayout) {
+      var savedPos = iconPositions[item.id];
+      var fallbackPos = { x: 10 + (itemIndex % 6) * 118, y: 10 + Math.floor(itemIndex / 6) * 128 };
+      var pos = savedPos || fallbackPos;
+      button.style.position = "absolute";
+      button.style.left = pos.x + "px";
+      button.style.top = pos.y + "px";
+      button.style.width = "104px";
+      button.style.margin = "0";
+    }
 
     button.addEventListener("contextmenu", function(e) {
       e.preventDefault();
@@ -2362,12 +3054,16 @@ function renderFinder() {
       var ids = finderState.selectedIds.indexOf(item.id) >= 0 ? finderState.selectedIds.slice() : [item.id];
       if (finderState.selectedIds.indexOf(item.id) === -1) setSelection([item.id]);
       finderDragState = { ids: ids };
+      if (item.kind === "app" && item.association) {
+        appDragPayload = { id: item.association };
+      }
       e.dataTransfer.effectAllowed = "move";
       try { e.dataTransfer.setData("text/plain", item.id); } catch (err) {}
     });
 
     button.addEventListener("dragend", function() {
       finderDragState = null;
+      appDragPayload = null;
     });
 
     if (item.type === "folder") {
@@ -2495,6 +3191,37 @@ function startFinderSelectionBox(e) {
 
 finderGridEl.addEventListener("mousedown", startFinderSelectionBox);
 
+// dropping a dragged icon onto blank grid space (not onto a folder) parks it exactly
+// where it was dropped and keeps it there until dragged again
+finderGridEl.addEventListener("dragover", function(e) {
+  if (!finderDragState) return;
+  e.preventDefault();
+});
+
+finderGridEl.addEventListener("drop", function(e) {
+  if (!finderDragState) return;
+  if (e.target.closest(".finderItem")) return; // a folder's own drop handler deals with this
+  e.preventDefault();
+
+  var folderId = finderState.currentFolder.id;
+  if (folderId === "trash") { finderDragState = null; return; }
+
+  var gridRect = finderGridEl.getBoundingClientRect();
+  var dropX = e.clientX - gridRect.left + finderGridEl.scrollLeft;
+  var dropY = e.clientY - gridRect.top + finderGridEl.scrollTop;
+
+  if (!finderIconPositions[folderId]) finderIconPositions[folderId] = {};
+  finderDragState.ids.forEach(function(id, i) {
+    finderIconPositions[folderId][id] = {
+      x: Math.max(0, dropX - 52) + i * 14,
+      y: Math.max(0, dropY - 40) + i * 14
+    };
+  });
+
+  finderDragState = null;
+  renderFinder();
+});
+
 finderGridEl.addEventListener("contextmenu", function(e) {
   if (e.target.closest(".finderItem")) return; // handled by the item's own contextmenu listener
   e.preventDefault();
@@ -2526,6 +3253,7 @@ function showFinderContextMenu(x, y, item) {
   var inTrash = finderState.currentFolder.id === "trash";
 
   if (item) {
+    var isBinItem = item.association === "bin";
     if (inTrash) {
       finderContextMenuEl.appendChild(finderContextMenuAction("↩️ Put Back", function() {
         restoreTrashItem(item);
@@ -2533,24 +3261,28 @@ function showFinderContextMenu(x, y, item) {
         clearFinderSelection();
         renderFinder();
       }));
-      finderContextMenuEl.appendChild(finderContextMenuAction("🗑️ Delete Permanently", function() {
-        finderTrashItems = finderTrashItems.filter(function(entry) { return entry.id !== item.id; });
-        clearFinderSelection();
-        renderFinder();
-      }));
+      if (!isBinItem) {
+        finderContextMenuEl.appendChild(finderContextMenuAction("🗑️ Delete Permanently", function() {
+          finderTrashItems = finderTrashItems.filter(function(entry) { return entry.id !== item.id; });
+          clearFinderSelection();
+          renderFinder();
+        }));
+      }
     } else {
       finderContextMenuEl.appendChild(finderContextMenuAction("📂 Open", function() {
         openFinderItem(item);
       }));
-      finderContextMenuEl.appendChild(finderContextMenuAction("✏️ Rename", function() {
-        var renamed = prompt("Rename:", item.name);
-        if (renamed && renamed.trim()) renameFinderItem(item, renamed.trim());
-      }));
-      finderContextMenuEl.appendChild(finderContextMenuAction("🗑️ Delete", function() {
-        moveFinderItemToTrash(item, finderState.currentFolder);
-        clearFinderSelection();
-        renderFinder();
-      }));
+      if (!isBinItem) {
+        finderContextMenuEl.appendChild(finderContextMenuAction("✏️ Rename", function() {
+          var renamed = prompt("Rename:", item.name);
+          if (renamed && renamed.trim()) renameFinderItem(item, renamed.trim());
+        }));
+        finderContextMenuEl.appendChild(finderContextMenuAction("🗑️ Delete", function() {
+          moveFinderItemToTrash(item, finderState.currentFolder);
+          clearFinderSelection();
+          renderFinder();
+        }));
+      }
     }
   } else if (!inTrash) {
     finderContextMenuEl.appendChild(finderContextMenuAction("📁 New Folder", function() {
@@ -2560,9 +3292,7 @@ function showFinderContextMenu(x, y, item) {
 
   if (!finderContextMenuEl.children.length) return;
 
-  finderContextMenuEl.style.display = "block";
-  finderContextMenuEl.style.top = y + "px";
-  finderContextMenuEl.style.left = x + "px";
+  positionContextMenuOnScreen(finderContextMenuEl, x, y);
 }
 
 document.body.addEventListener("click", hideFinderContextMenu);
@@ -2636,7 +3366,7 @@ finderSearchInput.addEventListener("keydown", function(e) {
 });
 
 finderGridEl.addEventListener("click", function() {
-  finderGridEl.focus();
+  finderGridEl.focus({ preventScroll: true });
 });
 finderSidebarItemsEl.addEventListener("click", function(e) {
   var button = e.target.closest(".finderSidebarItem");
