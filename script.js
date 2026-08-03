@@ -2368,6 +2368,7 @@ var finderSidebarItemsEl = document.querySelector("#finderSidebarItems");
 var finderSearchInput = document.querySelector("#finderSearchInput");
 var finderGridEl = document.querySelector("#finderGrid");
 var finderSelectionBoxEl = document.querySelector("#finderSelectionBox");
+var finderEmptyTrashBtn = document.querySelector("#finderEmptyTrashBtn");
 var finderState = {
   currentRootId: "documents",
   currentFolder: null,
@@ -3004,6 +3005,11 @@ function renderSidebar() {
 function renderFinder() {
   renderSidebar();
 
+  var viewingTrash = finderState.currentFolder.id === "trash";
+  if (finderEmptyTrashBtn) {
+    finderEmptyTrashBtn.style.display = (viewingTrash && finderTrashItems.length > 0) ? "inline-block" : "none";
+  }
+
   finderState.viewItems = getVisibleItems();
   finderGridEl.innerHTML = "";
   finderSelectionBoxEl.style.display = "none";
@@ -3351,6 +3357,16 @@ finderGridEl.addEventListener("keydown", function(e) {
     if (renamed && renamed.trim()) renameFinderItem(target, renamed.trim());
   }
 });
+
+if (finderEmptyTrashBtn) {
+  finderEmptyTrashBtn.addEventListener("click", function() {
+    if (!finderTrashItems.length) return;
+    if (!confirm("Empty Trash? This can't be undone.")) return;
+    finderTrashItems = [];
+    clearFinderSelection();
+    renderFinder();
+  });
+}
 
 finderSearchInput.addEventListener("input", function() {
   finderState.searchQuery = finderSearchInput.value;
