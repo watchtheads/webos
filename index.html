@@ -711,6 +711,30 @@ html, body {
     </div>
   </div>
 
+  <!-- 4. Migration Assistant -->
+  <div class="setupCard" data-step="migrate">
+    <div class="setupEmoji">💾</div>
+    <h2 class="setupTitle">Transfer Your Data</h2>
+    <p class="setupSubtitle">Restore settings, files and preferences from a previous TuffOS backup.</p>
+    <div class="setupBody">
+      <div id="setupMigrateDropZone" class="setupDropZone">
+        Click <strong>Restore Backup</strong> below, or drag &amp; drop a <code>.json</code> backup file here
+        <input id="setupMigrateFileInput" type="file" accept="application/json" style="display:none;" />
+      </div>
+      <div style="display:flex; gap: 8px; justify-content: center; margin-top: 12px;">
+        <button class="setupBtnGhost" id="setupMigrateRestoreBtn">Restore Backup</button>
+      </div>
+      <p id="setupMigrateStatus" style="min-height: 18px; font-size: 13px; margin-top: 10px; text-align: center;"></p>
+    </div>
+    <div class="setupFooter">
+      <button class="setupBtnSecondary" data-back="terms">Back</button>
+      <div style="display:flex; gap: 8px;">
+        <button class="setupBtnGhost" data-next="account">Not Now</button>
+        <button class="setupBtnPrimary" id="setupMigrateContinueBtn">Continue</button>
+      </div>
+    </div>
+  </div>
+
   <!-- 5. Create Account -->
   <div class="setupCard" data-step="account">
     <div class="setupEmoji">👤</div>
@@ -740,7 +764,7 @@ html, body {
       </div>
     </div>
     <div class="setupFooter">
-      <button class="setupBtnSecondary" data-back="terms">Back</button>
+      <button class="setupBtnSecondary" data-back="migrate">Back</button>
       <button class="setupBtnPrimary" id="setupAccountContinue" data-next="timezone" disabled>Continue</button>
     </div>
   </div>
@@ -777,31 +801,7 @@ html, body {
     </div>
     <div class="setupFooter">
       <button class="setupBtnSecondary" data-back="timezone">Back</button>
-      <button class="setupBtnPrimary" id="setupWifiContinue" data-next="migrate" disabled>Continue</button>
-    </div>
-  </div>
-
-  <!-- 8. Migration Assistant -->
-  <div class="setupCard" data-step="migrate">
-    <div class="setupEmoji">💾</div>
-    <h2 class="setupTitle">Transfer Your Data</h2>
-    <p class="setupSubtitle">Restore settings, files and preferences from a previous TuffOS backup.</p>
-    <div class="setupBody">
-      <div id="setupMigrateDropZone" class="setupDropZone">
-        Click <strong>Restore Backup</strong> below, or drag &amp; drop a <code>.json</code> backup file here
-        <input id="setupMigrateFileInput" type="file" accept="application/json" style="display:none;" />
-      </div>
-      <div style="display:flex; gap: 8px; justify-content: center; margin-top: 12px;">
-        <button class="setupBtnGhost" id="setupMigrateRestoreBtn">Restore Backup</button>
-      </div>
-      <p id="setupMigrateStatus" style="min-height: 18px; font-size: 13px; margin-top: 10px; text-align: center;"></p>
-    </div>
-    <div class="setupFooter">
-      <button class="setupBtnSecondary" data-back="wifi">Back</button>
-      <div style="display:flex; gap: 8px;">
-        <button class="setupBtnGhost" data-next="appearance">Not Now</button>
-        <button class="setupBtnPrimary" data-next="appearance">Continue</button>
-      </div>
+      <button class="setupBtnPrimary" id="setupWifiContinue" data-next="appearance" disabled>Continue</button>
     </div>
   </div>
 
@@ -823,7 +823,7 @@ html, body {
       </div>
     </div>
     <div class="setupFooter">
-      <button class="setupBtnSecondary" data-back="migrate">Back</button>
+      <button class="setupBtnSecondary" data-back="wifi">Back</button>
       <button class="setupBtnPrimary" data-next="installing">Continue</button>
     </div>
   </div>
@@ -1002,6 +1002,15 @@ html, body {
         <button class="themeOption" data-theme="#8B5E3C">Brown</button>
         <button class="themeOption" data-theme="#4B0082">Purple</button>
       </div>
+
+      <p style="margin: 12px 0 4px 0; font-weight: bold;">Backup</p>
+      <div style="display: flex; gap: 8px; align-items: center;">
+        <button id="settingsDownloadBackupBtn" style="cursor:pointer;">Download Backup</button>
+        <button id="settingsRestoreBackupBtn" style="cursor:pointer;">Restore Backup</button>
+        <input id="settingsRestoreBackupInput" type="file" accept="application/json" style="display:none;" />
+      </div>
+      <p id="settingsRestoreStatus" style="min-height: 14px; font-size: 11px; margin: 6px 0 0 0;"></p>
+
       <div class="resizeHandle"></div>
     </div>
 

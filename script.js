@@ -843,8 +843,23 @@ notesScreen.addEventListener("mousedown", function() {
   bringToFront(notesScreen);
 });
 
-// notes just live in memory for now - no localStorage, no backend, refresh and it's gone
-var notes = [
+// notes are persisted to localStorage so they survive refresh and get swept up in backups
+function loadNotesFromStorage() {
+  try {
+    var raw = localStorage.getItem("tuffos-notes");
+    if (!raw) return null;
+    var parsed = JSON.parse(raw);
+    return Array.isArray(parsed) && parsed.length ? parsed : null;
+  } catch (e) {
+    return null;
+  }
+}
+
+function saveNotesToStorage() {
+  localStorage.setItem("tuffos-notes", JSON.stringify(notes));
+}
+
+var notes = loadNotesFromStorage() || [
   { title: "Welcome", content: "Start typing your notes here..." }
 ];
 var currentNoteIndex = 0;
@@ -874,6 +889,7 @@ function selectNote(index) {
   currentNoteIndex = index;
   notesContent.innerHTML = notes[currentNoteIndex].content || "Start typing your notes here...";
   renderNotesList();
+  saveNotesToStorage();
 }
 
 addNoteBtn.addEventListener("click", function() {
@@ -883,6 +899,7 @@ addNoteBtn.addEventListener("click", function() {
   notesContent.innerHTML = "";
   renderNotesList();
   notesContent.focus();
+  saveNotesToStorage();
 });
 
 notesContent.addEventListener("focus", function() {
@@ -891,10 +908,21 @@ notesContent.addEventListener("focus", function() {
   }
 });
 
+// debounced save while typing, so we're not hitting localStorage on every keystroke
+var notesSaveTimeout = null;
+notesContent.addEventListener("input", function() {
+  notes[currentNoteIndex].content = notesContent.innerHTML;
+  clearTimeout(notesSaveTimeout);
+  notesSaveTimeout = setTimeout(saveNotesToStorage, 400);
+});
+
 notesContent.addEventListener("blur", function() {
   if (notesContent.innerHTML.trim() === "") {
     notesContent.innerHTML = "Start typing your notes here...";
   }
+  notes[currentNoteIndex].content = notesContent.innerHTML === "Start typing your notes here..." ? "" : notesContent.innerHTML;
+  clearTimeout(notesSaveTimeout);
+  saveNotesToStorage();
 });
 
 renderNotesList();
@@ -1208,7 +1236,7 @@ function maybeShowSetupWizard() {
 }
 
 // ---- step order + card transition helpers ----
-var setupStepOrder = ["welcome", "privacy", "terms", "account", "timezone", "wifi", "migrate", "appearance", "installing", "complete"];
+var setupStepOrder = ["welcome", "privacy", "terms", "migrate", "account", "timezone", "wifi", "appearance", "installing", "complete"];
 var setupCards = {};
 document.querySelectorAll(".setupCard").forEach(function(card) {
   setupCards[card.dataset.step] = card;
@@ -1422,7 +1450,7 @@ setupWifiNotNowRadio.addEventListener("change", function() {
 
 setupWifiContinueBtn.addEventListener("click", function() {
   if (setupWifiContinueBtn.disabled) return;
-  goToSetupStep("migrate");
+  goToSetupStep("appearance");
 });
 
 // ---- Topbar Wi-Fi menu (click the Wi-Fi icon next to the clock) ----
@@ -1737,24 +1765,189 @@ setupMigrateRestoreBtn.addEventListener("click", function() {
   setupMigrateFileInput.click();
 });
 
+var TUFFOS_BACKUP_MARKER = "tuffos-backup";
+var TUFFOS_BACKUP_VERSION = 1;
+
+// scans every tuffos-* localStorage key so newly added stuff (notes, files,
+// wifi, theme, etc.) is automatically included without listing keys by hand
+function collectBackupData() {
+  var data = {};
+  for (var i = 0; i < localStorage.length; i++) {
+    var key = localStorage.key(i);
+    if (key && key.indexOf("tuffos-") === 0) {
+      data[key] = localStorage.getItem(key);
+    }
+  }
+  return data;
+}
+
+function buildBackupBlob() {
+  return {
+    marker: TUFFOS_BACKUP_MARKER,
+    version: TUFFOS_BACKUP_VERSION,
+    exportedAt: new Date().toISOString(),
+    data: collectBackupData()
+  };
+}
+
+function isValidBackupShape(parsed) {
+  return !!parsed &&
+    typeof parsed === "object" &&
+    parsed.marker === TUFFOS_BACKUP_MARKER &&
+    typeof parsed.version === "number" &&
+    parsed.data && typeof parsed.data === "object" && !Array.isArray(parsed.data);
+}
+
+var setupBackupWasRestored = false;
+
+// after restoring a backup, a bunch of app state that only gets read into memory
+// once at page load (notes, dock icons, desktop icons) needs to be re-synced by
+// hand so restored data shows up immediately instead of needing a page reload
+function rebuildDockFromStorage() {
+  dockRemovedIds = loadDockRemovedIds();
+  dockOpenApps.innerHTML = "";
+  dockMinimizedApps.innerHTML = "";
+  dockIcons = {};
+  for (var appId in appIcons) {
+    if (dockRemovedIds.indexOf(appId) === -1) {
+      var icon = createDockIcon(appId);
+      dockOpenApps.appendChild(icon);
+      var screen = appScreens[appId];
+      var isOpen = screen && screen.style.display === "flex";
+      icon.querySelector(".dockDot").style.visibility = isOpen ? "visible" : "hidden";
+    }
+  }
+  updateDivider();
+}
+
+function refreshNotesFromStorage() {
+  var loaded = loadNotesFromStorage();
+  notes = loaded || [{ title: "Welcome", content: "Start typing your notes here..." }];
+  currentNoteIndex = 0;
+  renderNotesList();
+  notesContent.innerHTML = notes[currentNoteIndex].content || "Start typing your notes here...";
+}
+
+function refreshLiveStateAfterRestore() {
+  refreshNotesFromStorage();
+
+  desktopIconPositions = loadDesktopIconPositions();
+  renderDesktopIcons();
+
+  rebuildDockFromStorage();
+
+  // Pictures/Videos/Documents already read straight from storage on every
+  // render, so a Finder re-render is all they need to pick up restored files
+  renderFinder();
+
+  refreshBrowserOnlineState();
+  refreshWifiTopbarIcon();
+}
+
 function restoreSetupBackupFile(file) {
   var reader = new FileReader();
   reader.onload = function(event) {
+    var parsed;
     try {
-      var data = JSON.parse(event.target.result);
-      Object.keys(data).forEach(function(key) {
-        localStorage.setItem(key, typeof data[key] === "string" ? data[key] : JSON.stringify(data[key]));
-      });
-      setupMigrateStatus.textContent = "✓ Backup Restored Successfully";
-      setupMigrateStatus.style.color = "#6bd97a";
-      refreshBrowserOnlineState();
-      refreshWifiTopbarIcon();
+      parsed = JSON.parse(event.target.result);
     } catch (e) {
-      setupMigrateStatus.textContent = "That doesn't appear to be a valid TuffOS backup.";
+      parsed = null;
+    }
+
+    if (!isValidBackupShape(parsed)) {
+      setupMigrateStatus.textContent = "That doesn't appear to be a valid TuffOS backup file.";
       setupMigrateStatus.style.color = "#ff8080";
+      return;
+    }
+
+    Object.keys(parsed.data).forEach(function(key) {
+      if (key.indexOf("tuffos-") !== 0) return; // extra safety - only ever touch our own keys
+      var value = parsed.data[key];
+      localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+    });
+
+    setupBackupWasRestored = true;
+    setupMigrateStatus.textContent = "✓ Backup Restored Successfully";
+    setupMigrateStatus.style.color = "#6bd97a";
+    refreshLiveStateAfterRestore();
+
+    // reflect the restored theme immediately (rather than the wizard's default
+    // "dark" pick) so skipping straight to install doesn't stomp it back
+    var restoredTheme = localStorage.getItem("tuffos-theme");
+    if (restoredTheme) {
+      setupPickedTheme = restoredTheme;
+      applyTheme(restoredTheme);
+      setupAppearanceCards.forEach(function(c) {
+        c.classList.toggle("setupAppearanceActive", c.dataset.theme === restoredTheme);
+      });
     }
   };
   reader.readAsText(file);
+}
+
+// downloads current state as a .json in the format restoreSetupBackupFile expects
+function downloadTuffosBackup() {
+  var blob = new Blob([JSON.stringify(buildBackupBlob(), null, 2)], { type: "application/json" });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement("a");
+  a.href = url;
+  a.download = "tuffos-backup.json";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(function() { URL.revokeObjectURL(url); }, 1000);
+}
+
+var setupMigrateDownloadBtn = document.querySelector("#setupMigrateDownloadBtn");
+if (setupMigrateDownloadBtn) {
+  setupMigrateDownloadBtn.addEventListener("click", function() {
+    downloadTuffosBackup();
+    setupMigrateStatus.textContent = "✓ Backup downloaded";
+    setupMigrateStatus.style.color = "#6bd97a";
+  });
+}
+
+var settingsDownloadBackupBtn = document.querySelector("#settingsDownloadBackupBtn");
+if (settingsDownloadBackupBtn) {
+  settingsDownloadBackupBtn.addEventListener("click", function() {
+    downloadTuffosBackup();
+  });
+}
+
+var settingsRestoreBackupBtn = document.querySelector("#settingsRestoreBackupBtn");
+var settingsRestoreBackupInput = document.querySelector("#settingsRestoreBackupInput");
+var settingsRestoreStatus = document.querySelector("#settingsRestoreStatus");
+if (settingsRestoreBackupBtn && settingsRestoreBackupInput) {
+  settingsRestoreBackupBtn.addEventListener("click", function() {
+    settingsRestoreBackupInput.click();
+  });
+  settingsRestoreBackupInput.addEventListener("change", function() {
+    if (settingsRestoreBackupInput.files && settingsRestoreBackupInput.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function(event) {
+        var parsed;
+        try { parsed = JSON.parse(event.target.result); } catch (e) { parsed = null; }
+        if (!isValidBackupShape(parsed)) {
+          if (settingsRestoreStatus) {
+            settingsRestoreStatus.textContent = "That doesn't appear to be a valid TuffOS backup file.";
+            settingsRestoreStatus.style.color = "#ff8080";
+          }
+          return;
+        }
+        Object.keys(parsed.data).forEach(function(key) {
+          if (key.indexOf("tuffos-") !== 0) return;
+          var value = parsed.data[key];
+          localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
+        });
+        if (settingsRestoreStatus) {
+          settingsRestoreStatus.textContent = "✓ Backup restored";
+          settingsRestoreStatus.style.color = "#6bd97a";
+        }
+        refreshLiveStateAfterRestore();
+      };
+      reader.readAsText(settingsRestoreBackupInput.files[0]);
+    }
+  });
 }
 
 setupMigrateFileInput.addEventListener("change", function() {
@@ -1777,6 +1970,18 @@ setupMigrateDropZone.addEventListener("drop", function(e) {
     restoreSetupBackupFile(e.dataTransfer.files[0]);
   }
 });
+
+var setupMigrateContinueBtn = document.querySelector("#setupMigrateContinueBtn");
+if (setupMigrateContinueBtn) {
+  setupMigrateContinueBtn.addEventListener("click", function() {
+    if (setupBackupWasRestored) {
+      goToSetupStep("installing");
+      runSetupInstallSequence();
+    } else {
+      goToSetupStep("account");
+    }
+  });
+}
 
 // ---- Terms & Conditions + agreement modal ----
 var setupTermsCheckbox = document.querySelector("#setupTermsCheckbox");
@@ -1801,7 +2006,7 @@ setupAgreeCancelBtn.addEventListener("click", function() {
 setupAgreeConfirmBtn.addEventListener("click", function() {
   setupAgreeModalOverlay.style.display = "none";
   localStorage.setItem("tuffos-terms-agreed", "true");
-  goToSetupStep("account");
+  goToSetupStep("migrate");
 });
 
 // ---- Create Account step ----
@@ -2102,6 +2307,7 @@ var photoPreviewClose = document.querySelector("#photoPreviewClose");
 
 function addPhotoToStrip(sourceCanvas) {
   var dataUrl = sourceCanvas.toDataURL("image/png");
+  var name = "Photo " + new Date().toLocaleTimeString().replace(/:/g, "-") + ".png";
 
   var thumb = document.createElement("img");
   thumb.src = dataUrl;
@@ -2117,17 +2323,11 @@ function addPhotoToStrip(sourceCanvas) {
 
   photoThumbStrip.insertBefore(thumb, photoThumbStrip.firstChild);
 
-  addFinderFileToFolder(finderRoots.pictures, createFinderNode({
-    name: "Photo " + new Date().toLocaleTimeString().replace(/:/g, "-") + ".png",
-    type: "file",
-    kind: "image",
-    source: dataUrl,
-    editable: false
-  }));
+  addPictureFile(name, dataUrl);
 }
 
 function addVideoToStrip(blob) {
-  var url = URL.createObjectURL(blob);
+  var name = "Recording " + new Date().toLocaleTimeString().replace(/:/g, "-") + ".webm";
 
   var wrapper = document.createElement("div");
   wrapper.style.position = "relative";
@@ -2139,42 +2339,40 @@ function addVideoToStrip(blob) {
   wrapper.style.overflow = "hidden";
   wrapper.style.background = "#000";
 
-  var thumbVideo = document.createElement("video");
-  thumbVideo.src = url;
-  thumbVideo.style.width = "100%";
-  thumbVideo.style.height = "100%";
-  thumbVideo.style.objectFit = "cover";
-  thumbVideo.muted = true;
-  thumbVideo.playsInline = true;
-  // nudge the playhead a bit so the thumbnail isn't just a black frame
-  thumbVideo.addEventListener("loadedmetadata", function() {
-    thumbVideo.currentTime = Math.min(0.1, thumbVideo.duration || 0);
+  // convert to a data URL (rather than a blob: URL) so the recording can be
+  // persisted to localStorage and survive a refresh, same as PhotoBooth stills
+  blobToDataUrl(blob, function(dataUrl) {
+    var thumbVideo = document.createElement("video");
+    thumbVideo.src = dataUrl;
+    thumbVideo.style.width = "100%";
+    thumbVideo.style.height = "100%";
+    thumbVideo.style.objectFit = "cover";
+    thumbVideo.muted = true;
+    thumbVideo.playsInline = true;
+    // nudge the playhead a bit so the thumbnail isn't just a black frame
+    thumbVideo.addEventListener("loadedmetadata", function() {
+      thumbVideo.currentTime = Math.min(0.1, thumbVideo.duration || 0);
+    });
+
+    var playBadge = document.createElement("div");
+    playBadge.style.position = "absolute";
+    playBadge.style.inset = "0";
+    playBadge.style.display = "flex";
+    playBadge.style.alignItems = "center";
+    playBadge.style.justifyContent = "center";
+    playBadge.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));"><path d="M8 5v14l11-7z"/></svg>';
+
+    wrapper.appendChild(thumbVideo);
+    wrapper.appendChild(playBadge);
+
+    wrapper.addEventListener("click", function() {
+      showPreview("video", dataUrl);
+    });
+
+    photoThumbStrip.insertBefore(wrapper, photoThumbStrip.firstChild);
+
+    addVideoFile(name, dataUrl);
   });
-
-  var playBadge = document.createElement("div");
-  playBadge.style.position = "absolute";
-  playBadge.style.inset = "0";
-  playBadge.style.display = "flex";
-  playBadge.style.alignItems = "center";
-  playBadge.style.justifyContent = "center";
-  playBadge.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="#fff" style="filter: drop-shadow(0 0 3px rgba(0,0,0,0.6));"><path d="M8 5v14l11-7z"/></svg>';
-
-  wrapper.appendChild(thumbVideo);
-  wrapper.appendChild(playBadge);
-
-  wrapper.addEventListener("click", function() {
-    showPreview("video", url);
-  });
-
-  photoThumbStrip.insertBefore(wrapper, photoThumbStrip.firstChild);
-
-  addFinderFileToFolder(finderRoots.videos, createFinderNode({
-    name: "Recording " + new Date().toLocaleTimeString().replace(/:/g, "-") + ".webm",
-    type: "file",
-    kind: "video",
-    content: "Video preview not bundled in this demo.",
-    editable: false
-  }));
 }
 
 function showPreview(kind, url) {
@@ -2537,6 +2735,47 @@ function saveTextDocs(docs) {
   localStorage.setItem("tuffos-text-docs", JSON.stringify(docs));
 }
 
+// same idea as text docs - name -> data URL, so PhotoBooth stills survive a
+// refresh and get swept into backups automatically (they're just tuffos- keys)
+function loadPictureDocs() {
+  try {
+    var raw = localStorage.getItem("tuffos-pictures");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function savePictureDocs(docs) {
+  localStorage.setItem("tuffos-pictures", JSON.stringify(docs));
+}
+
+// PhotoBooth recordings, stored as data URLs too. Heads up: videos can be
+// sizeable and localStorage typically caps out around 5-10MB total, so long
+// or numerous recordings may not all fit - the save will fail quietly if so.
+function loadVideoDocs() {
+  try {
+    var raw = localStorage.getItem("tuffos-videos");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function saveVideoDocs(docs) {
+  try {
+    localStorage.setItem("tuffos-videos", JSON.stringify(docs));
+  } catch (e) {
+    console.warn("Couldn't save video - localStorage is probably full.", e);
+  }
+}
+
+function blobToDataUrl(blob, callback) {
+  var reader = new FileReader();
+  reader.onload = function(event) { callback(event.target.result); };
+  reader.readAsDataURL(blob);
+}
+
 function currentFolder() {
   return finderState.currentFolder;
 }
@@ -2586,6 +2825,27 @@ function addFinderFileToFolder(folder, node) {
   }
 }
 
+// write-through helpers for Pictures/Videos - storage is the source of truth
+// (same pattern as loadTextDocs/saveTextDocs for Documents) so PhotoBooth
+// captures automatically survive refresh and get included in backups
+function addPictureFile(name, dataUrl) {
+  var pics = loadPictureDocs();
+  pics[name] = dataUrl;
+  savePictureDocs(pics);
+  if (finderState.currentFolder && finderState.currentFolder.id === "pictures") {
+    renderFinder();
+  }
+}
+
+function addVideoFile(name, dataUrl) {
+  var vids = loadVideoDocs();
+  vids[name] = dataUrl;
+  saveVideoDocs(vids);
+  if (finderState.currentFolder && finderState.currentFolder.id === "videos") {
+    renderFinder();
+  }
+}
+
 function getFolderItems(folder) {
   if (!folder) return [];
   if (folder.id === "desktop") {
@@ -2617,6 +2877,40 @@ function getFolderItems(folder) {
       });
     });
     return folder.children.concat(dynamicDocs);
+  }
+  if (folder.id === "pictures") {
+    var pics = loadPictureDocs();
+    var dynamicPics = Object.keys(pics).sort(function(a, b) {
+      return b.localeCompare(a); // newest-named first (timestamps in the name)
+    }).map(function(name) {
+      return createFinderNode({
+        id: "pic:" + name,
+        name: name,
+        type: "file",
+        kind: "image",
+        source: pics[name],
+        editable: false,
+        meta: "Photo"
+      });
+    });
+    return folder.children.concat(dynamicPics);
+  }
+  if (folder.id === "videos") {
+    var vids = loadVideoDocs();
+    var dynamicVids = Object.keys(vids).sort(function(a, b) {
+      return b.localeCompare(a);
+    }).map(function(name) {
+      return createFinderNode({
+        id: "vid:" + name,
+        name: name,
+        type: "file",
+        kind: "video",
+        source: vids[name],
+        editable: false,
+        meta: "Video"
+      });
+    });
+    return folder.children.concat(dynamicVids);
   }
   if (folder.id === "trash") {
     return finderTrashItems.slice();
@@ -2729,6 +3023,11 @@ function openFinderItem(item) {
     return;
   }
 
+  if (item.kind === "video" && item.source) {
+    showPreview("video", item.source);
+    return;
+  }
+
   var textKinds = ["text", "document", "pdf", "archive", "html", "javascript", "css", "json", "unknown", "audio", "video"];
   if (textKinds.indexOf(item.kind) !== -1) {
     var previewContent = item.content || (item.kind === "audio" || item.kind === "video" ? (item.name + "\n\nPreview not bundled in this demo.") : item.name);
@@ -2781,13 +3080,33 @@ function removeItemFromFolder(folder, item) {
     saveTextDocs(docs);
     return;
   }
+  if (folder.id === "pictures" && item.id.indexOf("pic:") === 0) {
+    var pics = loadPictureDocs();
+    delete pics[item.name];
+    savePictureDocs(pics);
+    return;
+  }
+  if (folder.id === "videos" && item.id.indexOf("vid:") === 0) {
+    var vids = loadVideoDocs();
+    delete vids[item.name];
+    saveVideoDocs(vids);
+    return;
+  }
   var list = folder.children || [];
   var index = list.findIndex(function(child) { return child.id === item.id; });
   if (index >= 0) list.splice(index, 1);
 }
 
+// Bin, Files, and Settings are core system apps and can't be deleted/trashed
+// from the Finder - they can still be unpinned from the Dock, just not removed
+var UNDELETABLE_APP_ASSOCIATIONS = ["bin", "explorer", "settings"];
+
+function isUndeletableAppItem(item) {
+  return !!item && item.kind === "app" && UNDELETABLE_APP_ASSOCIATIONS.indexOf(item.association) !== -1;
+}
+
 function moveFinderItemToTrash(item, sourceFolder) {
-  if (item && item.association === "bin") return; // can't trash the Trash itself
+  if (isUndeletableAppItem(item)) return; // can't trash core system apps
   var folder = sourceFolder || item.parent || finderState.currentFolder;
 
   if (folder.id === "trash") {
@@ -2834,6 +3153,26 @@ function moveFinderItem(item, destinationFolder) {
     return;
   }
 
+  if (sourceFolder.id === "pictures" && item.id.indexOf("pic:") === 0) {
+    var pics = loadPictureDocs();
+    var picSource = pics[item.name] || item.source || "";
+    delete pics[item.name];
+    savePictureDocs(pics);
+    var movedPic = createFinderNode({ name: item.name, type: "file", kind: "image", source: picSource, editable: false });
+    addFinderFileToFolder(destinationFolder, movedPic);
+    return;
+  }
+
+  if (sourceFolder.id === "videos" && item.id.indexOf("vid:") === 0) {
+    var vids = loadVideoDocs();
+    var vidSource = vids[item.name] || item.source || "";
+    delete vids[item.name];
+    saveVideoDocs(vids);
+    var movedVid = createFinderNode({ name: item.name, type: "file", kind: "video", source: vidSource, editable: false });
+    addFinderFileToFolder(destinationFolder, movedVid);
+    return;
+  }
+
   removeItemFromFolder(sourceFolder, item);
   addFinderFileToFolder(destinationFolder, item);
 }
@@ -2865,6 +3204,14 @@ function restoreTrashItem(item) {
     var docs = loadTextDocs();
     docs[item.name] = item.content || "";
     saveTextDocs(docs);
+  } else if (destinationFolder.id === "pictures" && item.id.indexOf("pic:") === 0) {
+    var pics = loadPictureDocs();
+    pics[item.name] = item.source || "";
+    savePictureDocs(pics);
+  } else if (destinationFolder.id === "videos" && item.id.indexOf("vid:") === 0) {
+    var vids = loadVideoDocs();
+    vids[item.name] = item.source || "";
+    saveVideoDocs(vids);
   } else if (destinationFolder.id === "desktop" && item.kind === "app" && item.association) {
     // Desktop's contents come from desktopIconPositions, not folder.children
     if (!desktopIconPositions[item.association]) {
@@ -2891,6 +3238,18 @@ function renameFinderItem(item, newName) {
     delete docs[item.name];
     saveTextDocs(docs);
     item.id = "doc:" + newName;
+  } else if (finderState.currentFolder.id === "pictures" && item.id.indexOf("pic:") === 0) {
+    var pics = loadPictureDocs();
+    pics[newName] = pics[item.name] || item.source || "";
+    delete pics[item.name];
+    savePictureDocs(pics);
+    item.id = "pic:" + newName;
+  } else if (finderState.currentFolder.id === "videos" && item.id.indexOf("vid:") === 0) {
+    var vids = loadVideoDocs();
+    vids[newName] = vids[item.name] || item.source || "";
+    delete vids[item.name];
+    saveVideoDocs(vids);
+    item.id = "vid:" + newName;
   } else {
     item.name = newName;
   }
@@ -3259,7 +3618,7 @@ function showFinderContextMenu(x, y, item) {
   var inTrash = finderState.currentFolder.id === "trash";
 
   if (item) {
-    var isBinItem = item.association === "bin";
+    var isBinItem = isUndeletableAppItem(item);
     if (inTrash) {
       finderContextMenuEl.appendChild(finderContextMenuAction("↩️ Put Back", function() {
         restoreTrashItem(item);
