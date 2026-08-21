@@ -3,6 +3,7 @@ tuffOS
 An os built with html, css and js
 
 Features:
+
 • Setup assisant on your first visit - a welcome, privacy policy, terms and conditions, migration assistant, make an account (username password and character), pick your timezone, wifi, dark or light mode, and after all of that a terminal thing where it says the stuff u pick and 'installs" ;)
 
 • a boot screen when u visit the site or reload 
