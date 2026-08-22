@@ -176,6 +176,10 @@ function dragElement(element, disableSnap) {
     if (e.target.closest('[id$="close"], [id$="minimize"], [id$="fullscreen"]')) {
       return;
     }
+    if (element.dataset.fullscreen === "true") {
+      // can't drag (or snap) a fullscreen window - exit fullscreen first via the green dot
+      return;
+    }
     e.preventDefault();
     initialX = e.clientX;
     initialY = e.clientY;
@@ -586,6 +590,68 @@ function saveDesktopIconPositions(positions) {
 
 var desktopIconPositions = loadDesktopIconPositions();
 
+// desktop folders are separate from Finder's regular folders - they're just a
+// name + position, and they show up both as real icons on the Desktop and as
+// items inside the Files app's Desktop folder (see getFolderItems below)
+function loadDesktopFolders() {
+  try {
+    var raw = localStorage.getItem("tuffos-desktop-folders");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+function saveDesktopFolders(folders) {
+  localStorage.setItem("tuffos-desktop-folders", JSON.stringify(folders));
+}
+var desktopFolders = loadDesktopFolders();
+// one Finder node per desktop folder, built lazily and reused so anything
+// dropped inside one (via the Files app) survives across re-renders
+var desktopFolderNodes = {};
+function getOrCreateDesktopFolderNode(id, parentFolder) {
+  var entry = desktopFolders[id];
+  if (!entry) return null;
+  if (!desktopFolderNodes[id]) {
+    desktopFolderNodes[id] = createFinderNode({ id: id, name: entry.name, type: "folder", kind: "folder", children: [] });
+  }
+  desktopFolderNodes[id].name = entry.name;
+  desktopFolderNodes[id].parent = parentFolder;
+  return desktopFolderNodes[id];
+}
+
+// Stacks mode: instead of icons sitting wherever they were dropped, arrange
+// everything into neat columns (fills straight down, then wraps into the next
+// column over - so it ends up as one tidy rectangle instead of scattered)
+function isStacksEnabled() {
+  return localStorage.getItem("tuffos-desktop-stacks") === "true";
+}
+function setStacksEnabled(enabled) {
+  localStorage.setItem("tuffos-desktop-stacks", enabled ? "true" : "false");
+}
+function toggleDesktopStacks() {
+  setStacksEnabled(!isStacksEnabled());
+  renderDesktopIcons();
+}
+function updateStacksMenuLabel() {
+  var el = document.querySelector("#stacksMenuItem");
+  if (!el) return;
+  el.textContent = (isStacksEnabled() ? "✓ " : "") + "🗂️ Use Stacks";
+}
+function computeStackPositions(count) {
+  var colWidth = 96;
+  var rowHeight = 108;
+  var startX = 20;
+  var startY = 56;
+  var rows = Math.max(1, Math.floor((window.innerHeight - startY - 90) / rowHeight));
+  var positions = [];
+  for (var i = 0; i < count; i++) {
+    var col = Math.floor(i / rows);
+    var row = i % rows;
+    positions.push({ x: startX + col * colWidth, y: startY + row * rowHeight });
+  }
+  return positions;
+}
+
 function openDesktopApp(id) {
   if (id === "bin") {
     openBin();
@@ -619,6 +685,74 @@ function removeDesktopIcon(id) {
   saveDesktopIconPositions(desktopIconPositions);
   renderDesktopIcons();
   refreshFinderIfViewingDesktop();
+}
+
+function placeDesktopFolderAt(id, clientX, clientY) {
+  var entry = desktopFolders[id];
+  if (!entry) return;
+  var iconSize = 64;
+  var maxX = window.innerWidth - iconSize - 16;
+  var maxY = window.innerHeight - iconSize - 16;
+  entry.x = Math.min(Math.max(clientX - iconSize / 2, 8), Math.max(8, maxX));
+  entry.y = Math.min(Math.max(clientY - iconSize / 2, 56), Math.max(56, maxY));
+  saveDesktopFolders(desktopFolders);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+function createNewDesktopFolder(clientX, clientY) {
+  var iconSize = 64;
+  var maxX = window.innerWidth - iconSize - 16;
+  var maxY = window.innerHeight - iconSize - 16;
+  var px = typeof clientX === "number" ? clientX : window.innerWidth / 2;
+  var py = typeof clientY === "number" ? clientY : window.innerHeight / 2;
+  var x = Math.min(Math.max(px - iconSize / 2, 8), Math.max(8, maxX));
+  var y = Math.min(Math.max(py - iconSize / 2, 56), Math.max(56, maxY));
+
+  var baseName = "New Folder";
+  var existingNames = Object.keys(desktopFolders).map(function(id) { return desktopFolders[id].name; });
+  var name = baseName;
+  var counter = 2;
+  while (existingNames.indexOf(name) !== -1) {
+    name = baseName + " " + counter;
+    counter++;
+  }
+
+  var id = "desktop-folder-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
+  desktopFolders[id] = { name: name, x: x, y: y };
+  saveDesktopFolders(desktopFolders);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+function renameDesktopFolder(id) {
+  var entry = desktopFolders[id];
+  if (!entry) return;
+  var renamed = prompt("Rename folder:", entry.name);
+  if (renamed && renamed.trim()) {
+    entry.name = renamed.trim();
+    saveDesktopFolders(desktopFolders);
+    renderDesktopIcons();
+    refreshFinderIfViewingDesktop();
+  }
+}
+
+function deleteDesktopFolder(id) {
+  var entry = desktopFolders[id];
+  if (!entry) return;
+  if (!confirm("Delete \"" + entry.name + "\"? This can't be undone.")) return;
+  delete desktopFolders[id];
+  delete desktopFolderNodes[id];
+  saveDesktopFolders(desktopFolders);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+function openDesktopFolder(id) {
+  var node = getOrCreateDesktopFolderNode(id, finderRoots.desktop);
+  if (!node) return;
+  openWindow(explorerScreen);
+  setCurrentFolder(node, true);
 }
 
 // Files app may already be open and looking at the Desktop folder - keep it in sync
@@ -656,13 +790,62 @@ function showDesktopIconContextMenu(x, y, id) {
   positionContextMenuOnScreen(menu, x, y);
 }
 
+// right-click menu for a desktop folder (New Folder items)
+function showDesktopFolderContextMenu(x, y, id) {
+  var menu = document.querySelector("#finderContextMenu");
+  if (!menu) return;
+  menu.innerHTML = "";
+
+  var openRow = document.createElement("div");
+  openRow.className = "contextMenuItem";
+  openRow.textContent = "📂 Open";
+  openRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    openDesktopFolder(id);
+  });
+
+  var renameRow = document.createElement("div");
+  renameRow.className = "contextMenuItem";
+  renameRow.textContent = "✏️ Rename";
+  renameRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    renameDesktopFolder(id);
+  });
+
+  var deleteRow = document.createElement("div");
+  deleteRow.className = "contextMenuItem";
+  deleteRow.textContent = "🗑️ Delete";
+  deleteRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    deleteDesktopFolder(id);
+  });
+
+  menu.appendChild(openRow);
+  menu.appendChild(renameRow);
+  menu.appendChild(deleteRow);
+  positionContextMenuOnScreen(menu, x, y);
+}
+
 function renderDesktopIcons() {
   desktopAppsEl.innerHTML = "";
   desktopIconEls = {};
 
-  Object.keys(desktopIconPositions).forEach(function(id) {
-    if (!appIcons[id]) return; // app no longer exists - don't render a dead shortcut
-    var pos = desktopIconPositions[id];
+  var stacked = isStacksEnabled();
+
+  var appIds = Object.keys(desktopIconPositions).filter(function(id) { return !!appIcons[id]; });
+  appIds.sort(function(a, b) { return (appLabels[a] || a).localeCompare(appLabels[b] || b); });
+  var folderIds = Object.keys(desktopFolders);
+  folderIds.sort(function(a, b) { return desktopFolders[a].name.localeCompare(desktopFolders[b].name); });
+
+  // folders first, then apps - matches how most desktop OSes group things when tidied up
+  var entries = folderIds.map(function(id) { return { id: id, kind: "folder" }; })
+    .concat(appIds.map(function(id) { return { id: id, kind: "app" }; }));
+
+  var stackPositions = stacked ? computeStackPositions(entries.length) : null;
+
+  entries.forEach(function(entry, index) {
+    var pos = stacked ? stackPositions[index] : (entry.kind === "app" ? desktopIconPositions[entry.id] : desktopFolders[entry.id]);
+    if (!pos) return;
 
     var wrapper = document.createElement("div");
     wrapper.style.position = "absolute";
@@ -674,46 +857,71 @@ function renderDesktopIcons() {
     wrapper.style.filter = "drop-shadow(0 0 8px black)";
     wrapper.style.cursor = "pointer";
     wrapper.style.pointerEvents = "auto";
-    wrapper.draggable = true;
-
-    var img = document.createElement("img");
-    img.src = appIcons[id];
-    img.style.width = "64px";
-    img.style.height = "64px";
-    img.style.borderRadius = "16px";
+    // Stacks mode auto-arranges everything - dragging would just snap back on
+    // the next render, so don't let it start in the first place
+    wrapper.draggable = !stacked;
 
     var label = document.createElement("p");
     label.style.margin = "0px";
     label.style.color = "#fff";
-    label.textContent = appLabels[id] || id;
 
-    wrapper.appendChild(img);
+    if (entry.kind === "folder") {
+      var folderEntry = desktopFolders[entry.id];
+      var iconWrap = document.createElement("div");
+      iconWrap.style.width = "64px";
+      iconWrap.style.height = "64px";
+      iconWrap.style.margin = "0 auto";
+      iconWrap.style.color = "#eee";
+      iconWrap.innerHTML = fileIconMarkup("folder");
+      wrapper.appendChild(iconWrap);
+      label.textContent = folderEntry.name;
+    } else {
+      var img = document.createElement("img");
+      img.src = appIcons[entry.id];
+      img.style.width = "64px";
+      img.style.height = "64px";
+      img.style.borderRadius = "16px";
+      wrapper.appendChild(img);
+      label.textContent = appLabels[entry.id] || entry.id;
+    }
+
     wrapper.appendChild(label);
 
-    wrapper.addEventListener("dragstart", function(e) {
-      appDragPayload = { id: id };
-      e.dataTransfer.effectAllowed = "move";
-      try { e.dataTransfer.setData("text/plain", id); } catch (err) {}
-    });
-    wrapper.addEventListener("dragend", function() {
-      appDragPayload = null;
-    });
+    if (!stacked) {
+      wrapper.addEventListener("dragstart", function(e) {
+        appDragPayload = entry.kind === "app" ? { id: entry.id } : { folderId: entry.id };
+        e.dataTransfer.effectAllowed = "move";
+        try { e.dataTransfer.setData("text/plain", entry.id); } catch (err) {}
+      });
+      wrapper.addEventListener("dragend", function() {
+        appDragPayload = null;
+      });
+    }
+
     wrapper.addEventListener("click", function() {
-      openDesktopApp(id);
+      if (entry.kind === "folder") {
+        openDesktopFolder(entry.id);
+      } else {
+        openDesktopApp(entry.id);
+      }
     });
     wrapper.addEventListener("contextmenu", function(e) {
       e.preventDefault();
       e.stopPropagation();
-      showDesktopIconContextMenu(e.pageX, e.pageY, id);
+      if (entry.kind === "folder") {
+        showDesktopFolderContextMenu(e.pageX, e.pageY, entry.id);
+      } else {
+        showDesktopIconContextMenu(e.pageX, e.pageY, entry.id);
+      }
     });
 
-    desktopIconEls[id] = wrapper;
+    desktopIconEls[entry.kind + ":" + entry.id] = wrapper;
     desktopAppsEl.appendChild(wrapper);
   });
 }
 
-// dropping an app icon anywhere on the bare desktop (not on a window, the dock,
-// or a Finder window) places/moves its shortcut there
+// dropping an app or folder icon anywhere on the bare desktop (not on a window,
+// the dock, or a Finder window) places/moves its shortcut there
 document.body.addEventListener("dragover", function(e) {
   if (!appDragPayload) return;
   if (e.target !== document.body && e.target !== desktopAppsEl) return;
@@ -726,7 +934,11 @@ document.body.addEventListener("drop", function(e) {
     return;
   }
   e.preventDefault();
-  placeDesktopIcon(appDragPayload.id, e.clientX, e.clientY);
+  if (appDragPayload.folderId) {
+    placeDesktopFolderAt(appDragPayload.folderId, e.clientX, e.clientY);
+  } else {
+    placeDesktopIcon(appDragPayload.id, e.clientX, e.clientY);
+  }
   appDragPayload = null;
 });
 
@@ -738,6 +950,17 @@ function refreshDockDot(element) {
   if (!iconEl) return; // app isn't pinned to the Dock right now
   var dot = iconEl.querySelector(".dockDot");
   dot.style.visibility = element.style.display === "flex" ? "visible" : "hidden";
+}
+
+// true if the app's window is currently showing OR sitting minimized in the Dock -
+// used to block deleting an app (from Files/Trash) while it's still open
+function isAppWindowOpen(id) {
+  var screen = appScreens[id];
+  if (!screen) return false;
+  if (screen.style.display === "flex") return true;
+  var iconWrapper = dockIcons[id];
+  if (iconWrapper && iconWrapper.parentNode === dockMinimizedApps) return true;
+  return false;
 }
 
 function moveToMinimizedDock(id) {
@@ -756,7 +979,21 @@ function updateDivider() {
   dockDivider.style.display = dockMinimizedApps.children.length > 0 ? "block" : "none";
 }
 
+// used when a window gets closed or minimized while fullscreen - resets both
+// its size/position AND the chrome (top bar/taskbar/fixed header), so it isn't
+// left in a broken half-fullscreen state next time it's opened
+function forceExitFullscreen(element) {
+  if (element.dataset.fullscreen !== "true") return;
+  element.style.width = element.dataset.prevWidth || "";
+  element.style.height = element.dataset.prevHeight || "";
+  element.style.top = "50%";
+  element.style.left = "50%";
+  element.style.transform = "translate(-50%, -50%)";
+  exitFullscreenChrome(element);
+}
+
 function closeWindow(element) {
+  forceExitFullscreen(element);
   element.style.display = "none";
   refreshDockDot(element);
   moveToOpenDock(element.id);
@@ -770,6 +1007,7 @@ function openWindow(element) {
 }
 
 function minimizeWindow(element) {
+  forceExitFullscreen(element);
   var iconWrapper = dockIcons[element.id];
   if (!iconWrapper) {
     // not pinned to the Dock - just hide the window, no minimize-to-dock animation
@@ -868,16 +1106,30 @@ var notesList = document.querySelector("#notesList");
 var notesContent = document.querySelector("#notesContent");
 var addNoteBtn = document.querySelector("#addNoteBtn");
 
+function renameNote(index) {
+  var renamed = prompt("Rename note:", notes[index].title);
+  if (renamed && renamed.trim()) {
+    notes[index].title = renamed.trim();
+    renderNotesList();
+    saveNotesToStorage();
+  }
+}
+
 function renderNotesList() {
   notesList.innerHTML = "";
   for (let i = 0; i < notes.length; i++) {
     var item = document.createElement("p");
     item.textContent = notes[i].title;
+    item.title = "Double-click to rename";
     item.style.margin = "4px 0";
     item.style.cursor = "pointer";
     item.style.color = i === currentNoteIndex ? "#4ea1ff" : "#fff";
     item.addEventListener("click", function() {
       selectNote(i);
+    });
+    item.addEventListener("dblclick", function(e) {
+      e.stopPropagation();
+      renameNote(i);
     });
     notesList.appendChild(item);
   }
@@ -1171,9 +1423,17 @@ refreshBrowserOnlineState(); // reflect whatever was set up (or not) during setu
 
 // ---- right click menu on the desktop ----
 var contextMenu = document.querySelector("#contextMenu");
+var lastDesktopContextX = 0;
+var lastDesktopContextY = 0;
 
 document.body.addEventListener("contextmenu", function(e) {
   e.preventDefault();
+  // right-clicking on top of an app window shouldn't bring up the bare-desktop
+  // menu (New Folder/Change Wallpaper/Use Stacks) - only the empty desktop should
+  if (e.target.closest("#notes, #coffee, #calc, #settings, #browser, #photobooth, #explorer")) return;
+  lastDesktopContextX = e.clientX;
+  lastDesktopContextY = e.clientY;
+  updateStacksMenuLabel();
   positionContextMenuOnScreen(contextMenu, e.pageX, e.pageY);
 });
 
@@ -1184,11 +1444,9 @@ document.body.addEventListener("click", function() {
 document.querySelectorAll(".contextMenuItem").forEach(function(item) {
   item.addEventListener("click", function() {
     var action = item.dataset.action;
-    if (action === "notes") openWindow(notesScreen);
-    if (action === "coffee") openWindow(coffeeScreen);
-    if (action === "settings") openWindow(settingsScreen);
-    if (action === "browser") openWindow(browserScreen);
-    if (action === "refresh") location.reload();
+    if (action === "newFolder") createNewDesktopFolder(lastDesktopContextX, lastDesktopContextY);
+    if (action === "wallpaper") openWindow(settingsScreen);
+    if (action === "stacks") toggleDesktopStacks();
     contextMenu.style.display = "none";
   });
 });
@@ -1832,6 +2090,8 @@ function refreshLiveStateAfterRestore() {
   refreshNotesFromStorage();
 
   desktopIconPositions = loadDesktopIconPositions();
+  desktopFolders = loadDesktopFolders();
+  desktopFolderNodes = {};
   renderDesktopIcons();
 
   rebuildDockFromStorage();
@@ -1911,42 +2171,6 @@ var settingsDownloadBackupBtn = document.querySelector("#settingsDownloadBackupB
 if (settingsDownloadBackupBtn) {
   settingsDownloadBackupBtn.addEventListener("click", function() {
     downloadTuffosBackup();
-  });
-}
-
-var settingsRestoreBackupBtn = document.querySelector("#settingsRestoreBackupBtn");
-var settingsRestoreBackupInput = document.querySelector("#settingsRestoreBackupInput");
-var settingsRestoreStatus = document.querySelector("#settingsRestoreStatus");
-if (settingsRestoreBackupBtn && settingsRestoreBackupInput) {
-  settingsRestoreBackupBtn.addEventListener("click", function() {
-    settingsRestoreBackupInput.click();
-  });
-  settingsRestoreBackupInput.addEventListener("change", function() {
-    if (settingsRestoreBackupInput.files && settingsRestoreBackupInput.files[0]) {
-      var reader = new FileReader();
-      reader.onload = function(event) {
-        var parsed;
-        try { parsed = JSON.parse(event.target.result); } catch (e) { parsed = null; }
-        if (!isValidBackupShape(parsed)) {
-          if (settingsRestoreStatus) {
-            settingsRestoreStatus.textContent = "That doesn't appear to be a valid TuffOS backup file.";
-            settingsRestoreStatus.style.color = "#ff8080";
-          }
-          return;
-        }
-        Object.keys(parsed.data).forEach(function(key) {
-          if (key.indexOf("tuffos-") !== 0) return;
-          var value = parsed.data[key];
-          localStorage.setItem(key, typeof value === "string" ? value : JSON.stringify(value));
-        });
-        if (settingsRestoreStatus) {
-          settingsRestoreStatus.textContent = "✓ Backup restored";
-          settingsRestoreStatus.style.color = "#6bd97a";
-        }
-        refreshLiveStateAfterRestore();
-      };
-      reader.readAsText(settingsRestoreBackupInput.files[0]);
-    }
   });
 }
 
@@ -2849,17 +3073,23 @@ function addVideoFile(name, dataUrl) {
 function getFolderItems(folder) {
   if (!folder) return [];
   if (folder.id === "desktop") {
-    return Object.keys(desktopIconPositions).filter(function(id) {
+    var deskAppItems = Object.keys(desktopIconPositions).filter(function(id) {
       return !!appIcons[id];
     }).map(function(id) {
-      return createFinderNode({
+      var node = createFinderNode({
         id: "desktop:" + id,
         name: appLabels[id] || id,
         type: "file",
         kind: "app",
         association: id
       });
+      node.parent = folder;
+      return node;
     });
+    var deskFolderItems = Object.keys(desktopFolders).map(function(id) {
+      return getOrCreateDesktopFolderNode(id, folder);
+    }).filter(Boolean);
+    return deskFolderItems.concat(deskAppItems);
   }
   if (folder.id === "documents") {
     var docs = loadTextDocs();
@@ -3107,6 +3337,10 @@ function isUndeletableAppItem(item) {
 
 function moveFinderItemToTrash(item, sourceFolder) {
   if (isUndeletableAppItem(item)) return; // can't trash core system apps
+  if (item.kind === "app" && item.association && isAppWindowOpen(item.association)) {
+    alert("\"" + item.name + "\" is open. Close it first, then try deleting it again.");
+    return;
+  }
   var folder = sourceFolder || item.parent || finderState.currentFolder;
 
   if (folder.id === "trash") {
@@ -3115,15 +3349,31 @@ function moveFinderItemToTrash(item, sourceFolder) {
     return;
   }
 
+  // Desktop folders live in the desktopFolders map, not as real Finder nodes with
+  // a parent/children chain, so deleting one here is permanent instead of going
+  // through Trash like everything else does
+  if (folder.id === "desktop" && item.kind === "folder") {
+    delete desktopFolders[item.id];
+    delete desktopFolderNodes[item.id];
+    saveDesktopFolders(desktopFolders);
+    renderDesktopIcons();
+    refreshFinderIfViewingDesktop();
+    return;
+  }
+
   var origin = {
     folderId: folder.id,
     index: getFolderItems(folder).findIndex(function(entry) { return entry.id === item.id; })
   };
 
-  if (folder.id === "desktop" && item.kind === "app" && item.association) {
-    delete desktopIconPositions[item.association];
+  var isDesktopAppItem = folder.id === "desktop" && (item.id && item.id.indexOf("desktop:") === 0 || (item.kind === "app" && item.association));
+
+  if (isDesktopAppItem) {
+    var desktopAssociation = item.association || item.id.slice("desktop:".length);
+    delete desktopIconPositions[desktopAssociation];
     saveDesktopIconPositions(desktopIconPositions);
     renderDesktopIcons();
+    refreshFinderIfViewingDesktop();
   } else {
     removeItemFromFolder(folder, item);
   }
@@ -3141,6 +3391,34 @@ function moveFinderItem(item, destinationFolder) {
   if (destinationFolder.id === item.id) return; // can't drop a folder into itself
   var sourceFolder = item.parent || finderState.currentFolder;
   if (sourceFolder.id === destinationFolder.id) return;
+
+  // Desktop's contents live in desktopIconPositions, not folder.children - so an
+  // item dragged OUT of Desktop has to be un-placed from there explicitly, or it
+  // stays sitting on the Desktop even though it just got "moved" somewhere else
+  if (sourceFolder.id === "desktop" && item.kind === "app" && item.association) {
+    delete desktopIconPositions[item.association];
+    saveDesktopIconPositions(desktopIconPositions);
+    renderDesktopIcons();
+
+    if (destinationFolder.id === "applications") {
+      // it's always in Applications already (that's the master list) - nothing more to do
+      return;
+    }
+
+    var movedAppNode = createFinderNode({ name: item.name, type: "file", kind: "app", association: item.association });
+    addFinderFileToFolder(destinationFolder, movedAppNode);
+    return;
+  }
+
+  // same reason in reverse: dropping something ONTO Desktop needs to go through
+  // desktopIconPositions (placeDesktopIcon), not folder.children, or it disappears
+  // from its old spot without ever actually showing up on the Desktop
+  if (destinationFolder.id === "desktop") {
+    if (item.kind === "app" && item.association) {
+      placeDesktopIcon(item.association, window.innerWidth / 2, window.innerHeight / 2);
+    }
+    return; // non-app files aren't supported on the Desktop - leave them where they are
+  }
 
   if (sourceFolder.id === "documents" && item.id.indexOf("doc:") === 0) {
     // moving a saved text doc out of Documents into another folder: copy its content in, drop the doc entry
@@ -3344,7 +3622,7 @@ function renderSidebar() {
       if (root.id === "trash") {
         finderDragState.ids.forEach(function(id) {
           var item = finderState.viewItems.filter(function(i) { return i.id === id; })[0];
-          if (item) moveFinderItemToTrash(item);
+          if (item) moveFinderItemToTrash(item, finderState.currentFolder);
         });
       } else {
         finderDragState.ids.forEach(function(id) {

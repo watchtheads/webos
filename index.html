@@ -22,6 +22,23 @@
 }
 * {
   box-sizing: border-box;
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+}
+/* re-enable selection where people actually need to select/copy text */
+#notesContent,
+#textFileBody,
+#textFileNameInput,
+#finderSearchInput,
+#loginScreenPassword,
+.setupInput,
+.setupSelect,
+.setupTextarea,
+input,
+textarea {
+  user-select: text !important;
+  -webkit-user-select: text !important;
 }
 .contextMenuItem {
   padding: 8px 12px;
@@ -1006,10 +1023,7 @@ html, body {
       <p style="margin: 12px 0 4px 0; font-weight: bold;">Backup</p>
       <div style="display: flex; gap: 8px; align-items: center;">
         <button id="settingsDownloadBackupBtn" style="cursor:pointer;">Download Backup</button>
-        <button id="settingsRestoreBackupBtn" style="cursor:pointer;">Restore Backup</button>
-        <input id="settingsRestoreBackupInput" type="file" accept="application/json" style="display:none;" />
       </div>
-      <p id="settingsRestoreStatus" style="min-height: 14px; font-size: 11px; margin: 6px 0 0 0;"></p>
 
       <div class="resizeHandle"></div>
     </div>
@@ -1065,12 +1079,9 @@ html, body {
 </div>
 
 <div id="contextMenu" style="display: none; position: absolute; background-color: #2b2b2b; color: #fff; border-radius: 8px; padding: 6px; z-index: 99999; box-shadow: 0 4px 12px rgba(0,0,0,0.4); min-width: 160px;">
-  <div class="contextMenuItem" data-action="notes">📝 Open Notes</div>
-  <div class="contextMenuItem" data-action="coffee">☕ Open Coffee</div>
-  <div class="contextMenuItem" data-action="settings">⚙️ Open Settings</div>
-  <div class="contextMenuItem" data-action="browser">🌐 Open Browser</div>
-  <div style="height: 1px; background-color: rgba(255,255,255,0.15); margin: 4px 0;"></div>
-  <div class="contextMenuItem" data-action="refresh">🔄 Refresh Desktop</div>
+  <div class="contextMenuItem" data-action="newFolder">📁 New Folder</div>
+  <div class="contextMenuItem" data-action="wallpaper">🖼️ Change Wallpaper</div>
+  <div class="contextMenuItem" id="stacksMenuItem" data-action="stacks">🗂️ Use Stacks</div>
 </div>
 
 <div id="finderContextMenu" style="display: none; position: absolute; background-color: #2b2b2b; color: #fff; border-radius: 8px; padding: 6px; z-index: 999999; box-shadow: 0 4px 12px rgba(0,0,0,0.4); min-width: 170px;"></div>
