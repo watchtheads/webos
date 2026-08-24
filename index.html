@@ -992,7 +992,7 @@ html, body {
       </div>
     </div>
 
-    <div id="settings" style="border: solid; width: 320px; height: 360px; padding: 16px; border-radius: 16px; background-color: #1F2733; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
+    <div id="settings" style="border: solid; width: 380px; height: 540px; padding: 16px; border-radius: 16px; background-color: #1F2733; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
       <div id="settingsheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
         <div id="settingsclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
         <div id="settingsminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
@@ -1000,29 +1000,58 @@ html, body {
       </div>
       <h2 style="margin: 4px;">⚙️ Settings</h2>
 
-      <p style="margin: 8px 0 4px 0; font-weight: bold;">Background</p>
-      <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
-        <img class="bgOption" data-bg="sand.jpg" src="./sand.jpg" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
-        <img class="bgOption" data-bg="idk.jpg" src="./idk.jpg" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
-        <button id="uploadBgBtn" style="cursor: pointer; height: 40px;">+ Custom</button>
-        <input id="bgFileInput" type="file" accept="image/*" style="display: none;" />
-      </div>
+      <div id="settingsBody" style="flex: 1; min-height: 0; overflow-y: auto; padding-right: 4px;">
 
-      <div id="bgUploadZone" style="display: none; margin-top: 8px; padding: 16px; border: 2px dashed #888; border-radius: 8px; text-align: center; font-size: 13px; color: #ccc; cursor: pointer;">
-        Paste an image link, click to browse, or drag & drop a photo here
-        <input id="bgUrlInput" type="text" placeholder="Paste image URL..." style="width: 100%; box-sizing: border-box; margin-top: 8px; padding: 6px; border-radius: 6px; border: none;" />
-      </div>
+        <p style="margin: 8px 0 4px 0; font-weight: bold;">Background</p>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+          <img class="bgOption" data-bg="sand.jpg" src="./sand.jpg" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
+          <img class="bgOption" data-bg="idk.jpg" src="./idk.jpg" style="width: 60px; height: 40px; object-fit: cover; border-radius: 6px; cursor: pointer; border: 2px solid transparent;" />
+          <button id="uploadBgBtn" style="cursor: pointer; height: 40px;">+ Custom</button>
+          <input id="bgFileInput" type="file" accept="image/*" style="display: none;" />
+        </div>
 
-      <p style="margin: 12px 0 4px 0; font-weight: bold;">Theme</p>
-      <div style="display: flex; gap: 8px;">
-        <button class="themeOption" data-theme="#5F9EA0">Teal</button>
-        <button class="themeOption" data-theme="#8B5E3C">Brown</button>
-        <button class="themeOption" data-theme="#4B0082">Purple</button>
-      </div>
+        <div id="bgUploadZone" style="display: none; margin-top: 8px; padding: 16px; border: 2px dashed #888; border-radius: 8px; text-align: center; font-size: 13px; color: #ccc; cursor: pointer;">
+          Paste an image link, click to browse, or drag & drop a photo here
+          <input id="bgUrlInput" type="text" placeholder="Paste image URL..." style="width: 100%; box-sizing: border-box; margin-top: 8px; padding: 6px; border-radius: 6px; border: none;" />
+        </div>
 
-      <p style="margin: 12px 0 4px 0; font-weight: bold;">Backup</p>
-      <div style="display: flex; gap: 8px; align-items: center;">
-        <button id="settingsDownloadBackupBtn" style="cursor:pointer;">Download Backup</button>
+        <p style="margin: 14px 0 4px 0; font-weight: bold;">Appearance</p>
+        <div style="display: flex; gap: 8px;">
+          <button id="settingsDarkModeBtn" style="flex:1; cursor:pointer; padding:10px; border-radius:8px; border:1px solid #3a3a40; background:#101012; color:#fff; font-size:13px;">🌙 Dark</button>
+          <button id="settingsLightModeBtn" style="flex:1; cursor:pointer; padding:10px; border-radius:8px; border:1px solid #3a3a40; background:#f0f0f0; color:#111; font-size:13px;">☀️ Light</button>
+        </div>
+
+        <p style="margin: 14px 0 4px 0; font-weight: bold;">Time Zone</p>
+        <input id="settingsTimezoneInput" class="setupInput" placeholder="Search by country, e.g. China, Brazil, Germany..." autocomplete="off" />
+        <div id="settingsTimezoneResults" class="setupComboResults"></div>
+
+        <p style="margin: 14px 0 4px 0; font-weight: bold;">Account</p>
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+          <img id="settingsAvatarPreview" src="./idk.jpg" style="width: 56px; height: 56px; border-radius: 50%; object-fit: cover; background: #333; border: 1px solid #333338;" />
+          <div>
+            <button id="settingsAvatarUploadBtn" class="setupBtnGhost" style="cursor:pointer;">Change Icon</button>
+            <input id="settingsAvatarFileInput" type="file" accept="image/*" style="display:none;" />
+          </div>
+        </div>
+
+        <label style="font-size: 11px; color: #9aa3ad; display: block; margin-bottom: 4px;">Username</label>
+        <div style="display:flex; gap: 6px; margin-bottom: 14px;">
+          <input id="settingsUsernameInput" class="setupInput" type="text" style="flex:1;" />
+          <button id="settingsSaveUsernameBtn" class="setupBtnGhost" style="cursor:pointer; white-space:nowrap;">Save</button>
+        </div>
+
+        <p style="margin: 4px 0 8px 0; font-weight: bold;">Change Password</p>
+        <input id="settingsCurrentPasswordInput" class="setupInput" type="password" placeholder="Current password" style="margin-bottom: 6px;" />
+        <input id="settingsNewPasswordInput" class="setupInput" type="password" placeholder="New password" style="margin-bottom: 6px;" />
+        <input id="settingsConfirmPasswordInput" class="setupInput" type="password" placeholder="Confirm new password" style="margin-bottom: 8px;" />
+        <button id="settingsSavePasswordBtn" class="setupBtnGhost" style="cursor:pointer;">Change Password</button>
+        <p id="settingsPasswordStatus" style="min-height: 16px; font-size: 12px; margin: 6px 0 0 0;"></p>
+
+        <p style="margin: 14px 0 4px 0; font-weight: bold;">Backup</p>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button id="settingsDownloadBackupBtn" style="cursor:pointer;">Download Backup</button>
+        </div>
+
       </div>
 
       <div class="resizeHandle"></div>

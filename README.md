@@ -42,7 +42,7 @@ Apps
 
 • calculator (does your math homework for you)
 
-• settings (change your wallpaper, download your backup)
+• settings (change your wallpaper, download your backup, dark and light mode, timezone, icon, username and password.)
 
 • browser (its just my website i made for a different mission iframed)
 

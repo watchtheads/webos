@@ -1004,6 +1004,13 @@ function openWindow(element) {
   bringToFront(element);
   refreshDockDot(element);
   moveToOpenDock(element.id);
+  // pick up anything that changed while Settings was closed (e.g. a restored
+  // backup) right as it opens - NOT on every click inside it, or it'll stomp
+  // whatever you're mid-typing in the Username field before Save can read it
+  if (element.id === "settings" && typeof refreshSettingsAccountFields === "function") {
+    refreshSettingsAccountFields();
+    updateSettingsAppearanceButtons();
+  }
 }
 
 function minimizeWindow(element) {
@@ -1304,13 +1311,6 @@ bgOptions.forEach(function(img) {
   });
 });
 
-var themeOptions = document.querySelectorAll(".themeOption");
-themeOptions.forEach(function(btn) {
-  btn.addEventListener("click", function() {
-    document.body.style.backgroundColor = btn.dataset.theme;
-  });
-});
-
 var uploadBgBtn = document.querySelector("#uploadBgBtn");
 var bgUploadZone = document.querySelector("#bgUploadZone");
 var bgFileInput = document.querySelector("#bgFileInput");
@@ -1362,6 +1362,226 @@ bgUploadZone.addEventListener("drop", function(e) {
     reader.readAsDataURL(e.dataTransfer.files[0]);
   }
 });
+
+// ---- Settings: Appearance (dark/light) ----
+var settingsDarkModeBtn = document.querySelector("#settingsDarkModeBtn");
+var settingsLightModeBtn = document.querySelector("#settingsLightModeBtn");
+
+function updateSettingsAppearanceButtons() {
+  var current = localStorage.getItem("tuffos-theme") || "dark";
+  if (settingsDarkModeBtn) settingsDarkModeBtn.style.boxShadow = current === "dark" ? "0 0 0 2px #4ea1ff" : "none";
+  if (settingsLightModeBtn) settingsLightModeBtn.style.boxShadow = current === "light" ? "0 0 0 2px #4ea1ff" : "none";
+}
+
+if (settingsDarkModeBtn) {
+  settingsDarkModeBtn.addEventListener("click", function() {
+    applyTheme("dark");
+    updateSettingsAppearanceButtons();
+  });
+}
+if (settingsLightModeBtn) {
+  settingsLightModeBtn.addEventListener("click", function() {
+    applyTheme("light");
+    updateSettingsAppearanceButtons();
+  });
+}
+updateSettingsAppearanceButtons();
+
+// ---- reusable "search by country, pick a time zone" combo box - used by both
+// the Settings window and the Setup Assistant's Time Zone step ----
+function initTimezoneCombo(input, resultsEl, onSelectionChange) {
+  if (!input || !resultsEl) return;
+
+  // move results panel out to <body> so no ancestor's overflow/scroll clipping can hide it
+  document.body.appendChild(resultsEl);
+
+  var selectedZone = null;
+  var hasTypedSearch = false;
+
+  function notify(zone) {
+    if (onSelectionChange) onSelectionChange(zone);
+  }
+
+  function setSavedSelection() {
+    var savedZone = getSavedTimezone();
+    if (!savedZone || !timezoneEntriesReady) return;
+    var savedEntry = timezoneEntries.filter(function(entry) {
+      return entry.zone === savedZone;
+    })[0];
+    if (savedEntry) {
+      input.value = savedEntry.country;
+      selectedZone = savedEntry.zone;
+      notify(selectedZone);
+    }
+  }
+
+  function positionResults() {
+    var rect = input.getBoundingClientRect();
+    resultsEl.style.top = (rect.bottom + 6) + "px";
+    resultsEl.style.left = rect.left + "px";
+    resultsEl.style.width = rect.width + "px";
+  }
+
+  function labelFor(entry) {
+    return entry.country;
+  }
+
+  function renderResults(query) {
+    var q = normalizeTimezoneSearch(query);
+    resultsEl.innerHTML = "";
+    if (!timezoneEntriesReady) {
+      var loading = document.createElement("div");
+      loading.className = "setupComboEmpty";
+      loading.textContent = "Loading time zones...";
+      resultsEl.appendChild(loading);
+      return;
+    }
+
+    var matches = timezoneEntries.filter(function(entry) {
+      return !q || entry.searchText.indexOf(q) !== -1;
+    });
+    if (matches.length === 0) {
+      var empty = document.createElement("div");
+      empty.className = "setupComboEmpty";
+      empty.textContent = q ? "No matches for '" + query + "'" : "No timezone data loaded";
+      resultsEl.appendChild(empty);
+      return;
+    }
+    matches.forEach(function(entry) {
+      var row = document.createElement("div");
+      row.className = "setupComboRow";
+      var countryLabel = document.createElement("span");
+      countryLabel.className = "setupComboRowMain";
+      countryLabel.textContent = labelFor(entry);
+      var zoneTag = document.createElement("span");
+      zoneTag.className = "setupComboRowMeta";
+      zoneTag.textContent = entry.zone;
+      row.appendChild(countryLabel);
+      row.appendChild(zoneTag);
+      row.addEventListener("mousedown", function(e) {
+        e.preventDefault();
+        input.value = labelFor(entry);
+        selectedZone = entry.zone;
+        resultsEl.style.display = "none";
+        localStorage.setItem("tuffos-timezone", entry.zone);
+        notify(selectedZone);
+      });
+      resultsEl.appendChild(row);
+    });
+  }
+
+  setSavedSelection();
+
+  input.addEventListener("focus", function() {
+    positionResults();
+    renderResults(input.value);
+    resultsEl.style.display = "block";
+  });
+  input.addEventListener("input", function() {
+    hasTypedSearch = true;
+    positionResults();
+    renderResults(input.value);
+    resultsEl.style.display = "block";
+    // typing invalidates the previous selection until they click a result again
+    selectedZone = null;
+    notify(null);
+  });
+  input.addEventListener("blur", function() {
+    setTimeout(function() { resultsEl.style.display = "none"; }, 150);
+  });
+  window.addEventListener("resize", function() {
+    if (resultsEl.style.display === "block") positionResults();
+  });
+
+  timezoneEntriesPromise.then(function() {
+    if (!hasTypedSearch) {
+      setSavedSelection();
+    }
+    if (resultsEl.style.display === "block" || document.activeElement === input) {
+      positionResults();
+      renderResults(input.value);
+      resultsEl.style.display = "block";
+    }
+  });
+}
+
+initTimezoneCombo(document.querySelector("#settingsTimezoneInput"), document.querySelector("#settingsTimezoneResults"));
+
+// ---- Settings: Account (icon, username, password) ----
+var settingsAvatarPreview = document.querySelector("#settingsAvatarPreview");
+var settingsAvatarUploadBtn = document.querySelector("#settingsAvatarUploadBtn");
+var settingsAvatarFileInput = document.querySelector("#settingsAvatarFileInput");
+var settingsUsernameInput = document.querySelector("#settingsUsernameInput");
+var settingsSaveUsernameBtn = document.querySelector("#settingsSaveUsernameBtn");
+var settingsCurrentPasswordInput = document.querySelector("#settingsCurrentPasswordInput");
+var settingsNewPasswordInput = document.querySelector("#settingsNewPasswordInput");
+var settingsConfirmPasswordInput = document.querySelector("#settingsConfirmPasswordInput");
+var settingsSavePasswordBtn = document.querySelector("#settingsSavePasswordBtn");
+var settingsPasswordStatus = document.querySelector("#settingsPasswordStatus");
+
+function refreshSettingsAccountFields() {
+  if (settingsAvatarPreview) settingsAvatarPreview.src = localStorage.getItem("tuffos-avatar") || "./idk.jpg";
+  if (settingsUsernameInput) settingsUsernameInput.value = localStorage.getItem("tuffos-username") || "";
+}
+refreshSettingsAccountFields();
+
+if (settingsAvatarUploadBtn) {
+  settingsAvatarUploadBtn.addEventListener("click", function() {
+    settingsAvatarFileInput.click();
+  });
+}
+if (settingsAvatarFileInput) {
+  settingsAvatarFileInput.addEventListener("change", function() {
+    if (settingsAvatarFileInput.files && settingsAvatarFileInput.files[0]) {
+      var reader = new FileReader();
+      reader.onload = function(event) {
+        settingsAvatarPreview.src = event.target.result;
+        localStorage.setItem("tuffos-avatar", event.target.result);
+      };
+      reader.readAsDataURL(settingsAvatarFileInput.files[0]);
+    }
+  });
+}
+
+if (settingsSaveUsernameBtn) {
+  settingsSaveUsernameBtn.addEventListener("click", function() {
+    var newUsername = settingsUsernameInput.value.trim();
+    if (!newUsername) return;
+    localStorage.setItem("tuffos-username", newUsername);
+  });
+}
+
+if (settingsSavePasswordBtn) {
+  settingsSavePasswordBtn.addEventListener("click", function() {
+    var storedPassword = localStorage.getItem("tuffos-password") || "";
+    var current = settingsCurrentPasswordInput.value;
+    var next = settingsNewPasswordInput.value;
+    var confirmNext = settingsConfirmPasswordInput.value;
+
+    if (current !== storedPassword) {
+      settingsPasswordStatus.textContent = "Current password is incorrect.";
+      settingsPasswordStatus.style.color = "#ff8080";
+      return;
+    }
+    if (!next) {
+      settingsPasswordStatus.textContent = "Enter a new password.";
+      settingsPasswordStatus.style.color = "#ff8080";
+      return;
+    }
+    if (next !== confirmNext) {
+      settingsPasswordStatus.textContent = "New passwords don't match.";
+      settingsPasswordStatus.style.color = "#ff8080";
+      return;
+    }
+
+    localStorage.setItem("tuffos-password", next);
+    settingsCurrentPasswordInput.value = "";
+    settingsNewPasswordInput.value = "";
+    settingsConfirmPasswordInput.value = "";
+    settingsPasswordStatus.textContent = "✓ Password changed";
+    settingsPasswordStatus.style.color = "#6bd97a";
+  });
+}
 
 // ---- "browser" window - now just an iframe pinned to the new-tab site, no URL bar ----
 dragElement(document.querySelector("#browser"));
@@ -1544,118 +1764,9 @@ document.querySelectorAll(".setupCard [data-back]").forEach(function(btn) {
   var continueBtn = document.querySelector('[data-step="timezone"] [data-requires="timezone"]');
   if (!input || !resultsEl || !continueBtn) return;
 
-  // move results panel out to <body> so no ancestor's overflow/scroll clipping can hide it
-  document.body.appendChild(resultsEl);
-
-  var selectedZone = null;
-  var hasTypedSearch = false;
-
-  function updateContinueState() {
-    continueBtn.disabled = !selectedZone;
-  }
-
-  function setSavedSelection() {
-    var savedZone = getSavedTimezone();
-    if (!savedZone || !timezoneEntriesReady) return;
-
-    var savedEntry = timezoneEntries.filter(function(entry) {
-      return entry.zone === savedZone;
-    })[0];
-
-    if (savedEntry) {
-      input.value = savedEntry.country;
-      selectedZone = savedEntry.zone;
-      updateContinueState();
-    }
-  }
-
-  function positionResults() {
-    var rect = input.getBoundingClientRect();
-    resultsEl.style.top = (rect.bottom + 6) + "px";
-    resultsEl.style.left = rect.left + "px";
-    resultsEl.style.width = rect.width + "px";
-  }
-
-  function labelFor(entry) {
-    return entry.country;
-  }
-
-  function renderResults(query) {
-    var q = normalizeTimezoneSearch(query);
-    resultsEl.innerHTML = "";
-    if (!timezoneEntriesReady) {
-      var loading = document.createElement("div");
-      loading.className = "setupComboEmpty";
-      loading.textContent = "Loading time zones...";
-      resultsEl.appendChild(loading);
-      return;
-    }
-
-    var matches = timezoneEntries.filter(function(entry) {
-      return !q || entry.searchText.indexOf(q) !== -1;
-    });
-    if (matches.length === 0) {
-      var empty = document.createElement("div");
-      empty.className = "setupComboEmpty";
-      empty.textContent = q ? "No matches for '" + query + "'" : "No timezone data loaded";
-      resultsEl.appendChild(empty);
-      return;
-    }
-    matches.forEach(function(entry) {
-      var row = document.createElement("div");
-      row.className = "setupComboRow";
-      var countryLabel = document.createElement("span");
-      countryLabel.className = "setupComboRowMain";
-      countryLabel.textContent = labelFor(entry);
-      var zoneTag = document.createElement("span");
-      zoneTag.className = "setupComboRowMeta";
-      zoneTag.textContent = entry.zone;
-      row.appendChild(countryLabel);
-      row.appendChild(zoneTag);
-      row.addEventListener("mousedown", function(e) {
-        e.preventDefault();
-        input.value = labelFor(entry);
-        selectedZone = entry.zone;
-        resultsEl.style.display = "none";
-        localStorage.setItem("tuffos-timezone", entry.zone);
-        updateContinueState();
-      });
-      resultsEl.appendChild(row);
-    });
-  }
-
-  setSavedSelection();
-
-  input.addEventListener("focus", function() {
-    positionResults();
-    renderResults(input.value);
-    resultsEl.style.display = "block";
-  });
-  input.addEventListener("input", function() {
-    hasTypedSearch = true;
-    positionResults();
-    renderResults(input.value);
-    resultsEl.style.display = "block";
-    // typing invalidates the previous selection until they click a result again
-    selectedZone = null;
-    updateContinueState();
-  });
-  input.addEventListener("blur", function() {
-    setTimeout(function() { resultsEl.style.display = "none"; }, 150);
-  });
-  window.addEventListener("resize", function() {
-    if (resultsEl.style.display === "block") positionResults();
-  });
-
-  timezoneEntriesPromise.then(function() {
-    if (!hasTypedSearch) {
-      setSavedSelection();
-    }
-    if (resultsEl.style.display === "block" || document.activeElement === input) {
-      positionResults();
-      renderResults(input.value);
-      resultsEl.style.display = "block";
-    }
+  continueBtn.disabled = !getSavedTimezone();
+  initTimezoneCombo(input, resultsEl, function(zone) {
+    continueBtn.disabled = !zone;
   });
 })();
 
@@ -2102,6 +2213,8 @@ function refreshLiveStateAfterRestore() {
 
   refreshBrowserOnlineState();
   refreshWifiTopbarIcon();
+  refreshSettingsAccountFields();
+  updateSettingsAppearanceButtons();
 }
 
 function restoreSetupBackupFile(file) {
