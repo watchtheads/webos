@@ -16,11 +16,11 @@ Features:
 
 • fullscreen (put windows in fullscreen which hides the dock and the top bar)
 
-• macos type dock (has the apps on the dock and puts a little dot under it if its open and if its minimised the on the right side with a line)
+• macos type dock (has the apps on the dock and puts a little dot under it if its open and if its minimised the on the right side with a line and u can right click an app to remove it from the dock)
 
-• desktop (yeah theres a desktop lol but like u can drag apps on it to have them on the desktop)
+• desktop (yeah theres a desktop lol but like u can drag apps on it to have them on the desktop and you can right click to do the sstuf)
 
-• right click to do stuff (open notes, open coffee app, open settings, open browser, refresh desktop) ill prob change it to do other stuff later
+• right click to do stuff (make a new folder, change the wallpaper, use stacks0
 
 • start menu options (the 🥣 at the top top left has a thing to lock your screen, put tuffos to sleep, restart it or shutdown)
 

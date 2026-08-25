@@ -611,12 +611,21 @@ var desktopFolderNodes = {};
 function getOrCreateDesktopFolderNode(id, parentFolder) {
   var entry = desktopFolders[id];
   if (!entry) return null;
-  if (!desktopFolderNodes[id]) {
-    desktopFolderNodes[id] = createFinderNode({ id: id, name: entry.name, type: "folder", kind: "folder", children: [] });
+  if (desktopFolderNodes[id]) {
+    desktopFolderNodes[id].name = entry.name;
+    // native desktop folders only ever live on the Desktop, so keep their parent
+    // pointer in sync with it - but an alias's node is the SAME object as the real
+    // folder wherever it actually lives, so its parent must stay pointed there
+    if (!entry.alias) desktopFolderNodes[id].parent = parentFolder;
+    return desktopFolderNodes[id];
   }
-  desktopFolderNodes[id].name = entry.name;
-  desktopFolderNodes[id].parent = parentFolder;
-  return desktopFolderNodes[id];
+  // no cached node (fresh page load) - rebuild as a plain folder. If this was an
+  // alias, the link back to the real folder was only ever an in-memory thing and
+  // doesn't survive a reload (same limitation as any other non-persisted folder)
+  var node = createFinderNode({ id: id, name: entry.name, type: "folder", kind: "folder", children: [] });
+  node.parent = parentFolder;
+  desktopFolderNodes[id] = node;
+  return node;
 }
 
 // Stacks mode: instead of icons sitting wherever they were dropped, arrange
@@ -720,6 +729,29 @@ function createNewDesktopFolder(clientX, clientY) {
 
   var id = "desktop-folder-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
   desktopFolders[id] = { name: name, x: x, y: y };
+  saveDesktopFolders(desktopFolders);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+// makes an alias of an existing folder on the Desktop - same idea as dragging an
+// app onto the Desktop: a shortcut appears there, but the real thing stays put
+// (in this case, literally the same node object, so anything dropped inside
+// either one shows up in both places)
+function addDesktopFolderAlias(node, clientX, clientY) {
+  var existingId = Object.keys(desktopFolders).filter(function(id) {
+    return desktopFolderNodes[id] === node;
+  })[0];
+  var id = existingId || ("desktop-alias-" + Date.now() + "-" + Math.floor(Math.random() * 10000));
+
+  var iconSize = 64;
+  var maxX = window.innerWidth - iconSize - 16;
+  var maxY = window.innerHeight - iconSize - 16;
+  var x = Math.min(Math.max(clientX - iconSize / 2, 8), Math.max(8, maxX));
+  var y = Math.min(Math.max(clientY - iconSize / 2, 56), Math.max(56, maxY));
+
+  desktopFolders[id] = { name: node.name, x: x, y: y, alias: true };
+  desktopFolderNodes[id] = node;
   saveDesktopFolders(desktopFolders);
   renderDesktopIcons();
   refreshFinderIfViewingDesktop();
@@ -936,6 +968,8 @@ document.body.addEventListener("drop", function(e) {
   e.preventDefault();
   if (appDragPayload.folderId) {
     placeDesktopFolderAt(appDragPayload.folderId, e.clientX, e.clientY);
+  } else if (appDragPayload.folderNode) {
+    addDesktopFolderAlias(appDragPayload.folderNode, e.clientX, e.clientY);
   } else {
     placeDesktopIcon(appDragPayload.id, e.clientX, e.clientY);
   }
@@ -1688,7 +1722,12 @@ setTimeout(function() {
 
 setTimeout(function() {
   bootScreen.style.display = "none"; // instant cut, no fade, so nothing peeks through underneath
-  maybeShowSetupWizard();
+  if (localStorage.getItem("tuffos-setup-complete")) {
+    // returning user - make them log back in before they see the desktop
+    showLoginScreen();
+  } else {
+    maybeShowSetupWizard();
+  }
 }, 550);
 dragElement(document.querySelector("#photobooth"));
 
@@ -2055,7 +2094,8 @@ function showLockScreen() {
   showLoginScreen();
 }
 
-// ---- Sleep: screen goes black, any key press or mouse move wakes it right back up ----
+// ---- Sleep: screen goes black, moving the mouse/clicking/pressing a key wakes it
+// back up into the login screen (same as Lock, you just have to wake it first) ----
 function showSleepScreen() {
   systemPowerOverlayContent.innerHTML = "";
   systemPowerOverlay.style.display = "flex";
@@ -2064,12 +2104,15 @@ function showSleepScreen() {
   function wake() {
     document.removeEventListener("mousemove", wake);
     document.removeEventListener("keydown", wake);
+    document.removeEventListener("click", wake);
     systemPowerOverlay.style.display = "none";
+    showLoginScreen();
   }
   // tiny delay so the click that opened Sleep from the menu doesn't instantly wake it
   setTimeout(function () {
     document.addEventListener("mousemove", wake);
     document.addEventListener("keydown", wake);
+    document.addEventListener("click", wake);
   }, 150);
 }
 
@@ -3448,6 +3491,11 @@ function isUndeletableAppItem(item) {
   return !!item && item.kind === "app" && UNDELETABLE_APP_ASSOCIATIONS.indexOf(item.association) !== -1;
 }
 
+// apps keep their real name always - only folders (and regular files) can be renamed
+function canRenameFinderItem(item) {
+  return !!item && item.kind !== "app";
+}
+
 function moveFinderItemToTrash(item, sourceFolder) {
   if (isUndeletableAppItem(item)) return; // can't trash core system apps
   if (item.kind === "app" && item.association && isAppWindowOpen(item.association)) {
@@ -3523,14 +3571,34 @@ function moveFinderItem(item, destinationFolder) {
     return;
   }
 
+  // same idea for a folder icon sitting on the Desktop - but a folder there might
+  // be a real "native" desktop folder, or it might be an alias pointing at a
+  // folder that actually lives somewhere else. Dragging a native one away truly
+  // relocates it (its only home was the Desktop); dragging an alias away just
+  // removes the shortcut and leaves the real folder wherever it already is
+  if (sourceFolder.id === "desktop" && item.type === "folder" && desktopFolders[item.id]) {
+    var wasAlias = !!desktopFolders[item.id].alias;
+    delete desktopFolders[item.id];
+    delete desktopFolderNodes[item.id];
+    saveDesktopFolders(desktopFolders);
+    renderDesktopIcons();
+    if (!wasAlias) {
+      addFinderFileToFolder(destinationFolder, item);
+    }
+    return;
+  }
+
   // same reason in reverse: dropping something ONTO Desktop needs to go through
-  // desktopIconPositions (placeDesktopIcon), not folder.children, or it disappears
+  // desktopIconPositions/desktopFolders, not folder.children, or it disappears
   // from its old spot without ever actually showing up on the Desktop
   if (destinationFolder.id === "desktop") {
     if (item.kind === "app" && item.association) {
       placeDesktopIcon(item.association, window.innerWidth / 2, window.innerHeight / 2);
+    } else if (item.type === "folder") {
+      // just an alias - the real folder stays exactly where it was
+      addDesktopFolderAlias(item, window.innerWidth / 2, window.innerHeight / 2);
     }
-    return; // non-app files aren't supported on the Desktop - leave them where they are
+    return; // other file types aren't supported on the Desktop - leave them where they are
   }
 
   if (sourceFolder.id === "documents" && item.id.indexOf("doc:") === 0) {
@@ -3808,10 +3876,23 @@ function renderFinder() {
 
     button.addEventListener("dragstart", function(e) {
       var ids = finderState.selectedIds.indexOf(item.id) >= 0 ? finderState.selectedIds.slice() : [item.id];
-      if (finderState.selectedIds.indexOf(item.id) === -1) setSelection([item.id]);
+      if (finderState.selectedIds.indexOf(item.id) === -1) {
+        // mark it selected without calling renderFinder() - a full re-render would
+        // tear down this exact button mid-drag and cancel the browser's drag gesture,
+        // which is why dragging used to need a separate click first to "prime" it
+        finderState.selectedIds = [item.id];
+        finderState.anchorId = item.id;
+        finderState.focusId = item.id;
+        finderGridEl.querySelectorAll(".finderItem.selected, .finderItem.focused").forEach(function(el) {
+          el.classList.remove("selected", "focused");
+        });
+        button.classList.add("selected", "focused");
+      }
       finderDragState = { ids: ids };
       if (item.kind === "app" && item.association) {
         appDragPayload = { id: item.association };
+      } else if (item.type === "folder") {
+        appDragPayload = { folderNode: item };
       }
       e.dataTransfer.effectAllowed = "move";
       try { e.dataTransfer.setData("text/plain", item.id); } catch (err) {}
@@ -4028,11 +4109,13 @@ function showFinderContextMenu(x, y, item) {
       finderContextMenuEl.appendChild(finderContextMenuAction("📂 Open", function() {
         openFinderItem(item);
       }));
-      if (!isBinItem) {
+      if (canRenameFinderItem(item)) {
         finderContextMenuEl.appendChild(finderContextMenuAction("✏️ Rename", function() {
           var renamed = prompt("Rename:", item.name);
           if (renamed && renamed.trim()) renameFinderItem(item, renamed.trim());
         }));
+      }
+      if (!isBinItem) {
         finderContextMenuEl.appendChild(finderContextMenuAction("🗑️ Delete", function() {
           moveFinderItemToTrash(item, finderState.currentFolder);
           clearFinderSelection();
@@ -4083,7 +4166,7 @@ finderGridEl.addEventListener("keydown", function(e) {
 
   if (e.key === "Enter") {
     e.preventDefault();
-    openFinderSelected();
+    startRenameSelected();
     return;
   }
 
@@ -4101,12 +4184,16 @@ finderGridEl.addEventListener("keydown", function(e) {
 
   if (e.key === "F2") {
     e.preventDefault();
-    var target = getItemById(finderState.selectedIds[0] || finderState.focusId);
-    if (!target || target.type === "folder" && target.parent === null) return;
-    var renamed = prompt("Rename:", target.name);
-    if (renamed && renamed.trim()) renameFinderItem(target, renamed.trim());
+    startRenameSelected();
   }
 });
+
+function startRenameSelected() {
+  var target = getItemById(finderState.selectedIds[0] || finderState.focusId);
+  if (!canRenameFinderItem(target)) return;
+  var renamed = prompt("Rename:", target.name);
+  if (renamed && renamed.trim()) renameFinderItem(target, renamed.trim());
+}
 
 if (finderEmptyTrashBtn) {
   finderEmptyTrashBtn.addEventListener("click", function() {
@@ -4147,7 +4234,7 @@ function openFinderSelectedItem() {
 }
 
 explorerScreen.addEventListener("keydown", function(e) {
-  if (finderGridEl !== document.activeElement && finderSearchInput !== document.activeElement) return;
+  if (finderSearchInput !== document.activeElement) return;
   if (e.key === "Enter") {
     e.preventDefault();
     openFinderSelectedItem();
