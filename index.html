@@ -1101,6 +1101,17 @@ html, body {
       <div class="resizeHandle"></div>
     </div>
 
+    <div id="terminal" style="border: solid; width: 640px; height: 420px; padding: 0; border-radius: 10px; background-color: #1a1a1a; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; overflow: hidden;">
+      <div id="terminalheader" style="display: flex; align-items: center; gap: 6px; padding: 10px 12px; background-color: #3a3a3c; user-select: none;">
+        <div id="terminalclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="terminalminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="terminalfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+        <div id="terminalTitle" style="flex: 1; text-align: center; color: #ccc; font-size: 13px; font-family: -apple-system, BlinkMacSystemFont, sans-serif; margin-right: 54px;">zsh — 80x24</div>
+      </div>
+      <div id="terminalBody" tabindex="0" style="flex: 1; min-height: 0; overflow-y: auto; padding: 8px 12px; background-color: #1a1a1a; color: #f0f0f0; font-family: 'SF Mono', 'Consolas', 'Menlo', monospace; font-size: 14px; line-height: 1.5; white-space: pre-wrap; word-break: break-word; outline: none;"></div>
+      <div class="resizeHandle"></div>
+    </div>
+
     <div id="taskbar" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; backdrop-filter: blur(10px); background-color: rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 8px 12px; z-index: 9999;">
   <div id="dockOpenApps" style="display: flex; gap: 12px;"></div>
   <div id="dockDivider" style="width: 1px; height: 36px; background-color: rgba(255,255,255,0.3); display: none;"></div>

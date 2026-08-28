@@ -39,6 +39,13 @@ function getSnapZone(x, y) {
 // otherwise run past the bottom/right (this is why menus opened from the Dock,
 // which sits near the bottom, used to be mostly invisible).
 function positionContextMenuOnScreen(menu, x, y) {
+  // only one context menu should ever be on screen at a time - close any other
+  // one first (e.g. right-clicking the bare desktop, then right-clicking a
+  // folder icon, used to leave both menus open on top of each other)
+  document.querySelectorAll("#contextMenu, #finderContextMenu").forEach(function(other) {
+    if (other !== menu) other.style.display = "none";
+  });
+
   menu.style.visibility = "hidden";
   menu.style.display = "block";
   menu.style.top = "0px";
@@ -417,6 +424,7 @@ var appIcons = {
   browser: "./astrosearch.png",
   photobooth: "./photobooth.png",
   explorer: "./files.png",
+  terminal: "./terminal.png",
   bin: "./bin.png"
 };
 
@@ -428,6 +436,7 @@ var appLabels = {
   browser: "Browser",
   photobooth: "PhotoBooth",
   explorer: "Files",
+  terminal: "Terminal",
   bin: "Bin"
 };
 
@@ -732,6 +741,7 @@ function createNewDesktopFolder(clientX, clientY) {
   saveDesktopFolders(desktopFolders);
   renderDesktopIcons();
   refreshFinderIfViewingDesktop();
+  return id;
 }
 
 // makes an alias of an existing folder on the Desktop - same idea as dragging an
@@ -762,7 +772,17 @@ function renameDesktopFolder(id) {
   if (!entry) return;
   var renamed = prompt("Rename folder:", entry.name);
   if (renamed && renamed.trim()) {
-    entry.name = renamed.trim();
+    var newName = renamed.trim();
+    var nameTaken = Object.keys(desktopFolders).some(function(otherId) {
+      return otherId !== id && desktopFolders[otherId].name.toLowerCase() === newName.toLowerCase();
+    }) || Object.keys(desktopIconPositions).some(function(appId) {
+      return (appLabels[appId] || appId).toLowerCase() === newName.toLowerCase();
+    });
+    if (nameTaken) {
+      alert("NO!!! you cant have 2 things with the same name");
+      return;
+    }
+    entry.name = newName;
     saveDesktopFolders(desktopFolders);
     renderDesktopIcons();
     refreshFinderIfViewingDesktop();
@@ -886,9 +906,12 @@ function renderDesktopIcons() {
     wrapper.style.width = "88px";
     wrapper.style.textAlign = "center";
     wrapper.style.padding = "8px";
+    wrapper.style.borderRadius = "10px";
     wrapper.style.filter = "drop-shadow(0 0 8px black)";
     wrapper.style.cursor = "pointer";
     wrapper.style.pointerEvents = "auto";
+    wrapper.tabIndex = 0;
+    wrapper.style.outline = "none";
     // Stacks mode auto-arranges everything - dragging would just snap back on
     // the next render, so don't let it start in the first place
     wrapper.draggable = !stacked;
@@ -930,11 +953,30 @@ function renderDesktopIcons() {
       });
     }
 
-    wrapper.addEventListener("click", function() {
+    wrapper.addEventListener("click", function(e) {
+      e.stopPropagation();
+      document.querySelectorAll(".desktopIconSelected").forEach(function(el) {
+        el.classList.remove("desktopIconSelected");
+        el.style.background = "transparent";
+      });
+      wrapper.classList.add("desktopIconSelected");
+      wrapper.style.background = "rgba(255,255,255,0.18)";
+      wrapper.focus({ preventScroll: true });
+    });
+    wrapper.addEventListener("dblclick", function() {
       if (entry.kind === "folder") {
         openDesktopFolder(entry.id);
       } else {
         openDesktopApp(entry.id);
+      }
+    });
+    // Return (or F2) renames it, same as in the Files app - only folders can be
+    // renamed though, apps keep their real name (matches Files' own rule)
+    wrapper.addEventListener("keydown", function(e) {
+      if (e.key !== "Enter" && e.key !== "F2") return;
+      e.preventDefault();
+      if (entry.kind === "folder") {
+        renameDesktopFolder(entry.id);
       }
     });
     wrapper.addEventListener("contextmenu", function(e) {
@@ -1044,6 +1086,9 @@ function openWindow(element) {
   if (element.id === "settings" && typeof refreshSettingsAccountFields === "function") {
     refreshSettingsAccountFields();
     updateSettingsAppearanceButtons();
+  }
+  if (element.id === "terminal" && typeof initTerminalSession === "function") {
+    initTerminalSession();
   }
 }
 
@@ -1693,6 +1738,10 @@ document.body.addEventListener("contextmenu", function(e) {
 
 document.body.addEventListener("click", function() {
   contextMenu.style.display = "none";
+  document.querySelectorAll(".desktopIconSelected").forEach(function(el) {
+    el.classList.remove("desktopIconSelected");
+    el.style.background = "transparent";
+  });
 });
 
 document.querySelectorAll(".contextMenuItem").forEach(function(item) {
@@ -1706,7 +1755,7 @@ document.querySelectorAll(".contextMenuItem").forEach(function(item) {
 });
 
 // hook up resizing on everything except the calculator, too lazy to call this individually per window
-["notes", "coffee", "settings", "browser", "photobooth", "explorer"].forEach(function(id) {
+["notes", "coffee", "settings", "browser", "photobooth", "explorer", "terminal"].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) makeResizable(el);
 });
@@ -2933,6 +2982,252 @@ shutterBtn.addEventListener("click", function () {
   });
 });
 
+// ---- Terminal ----
+// A tiny fake zsh-alike. Not a real shell - just enough commands to poke around
+// and feel like a terminal (clear/whoami/pwd/date/echo/ls/help/exit).
+dragElement(document.querySelector("#terminal"));
+
+var terminalScreen = document.querySelector("#terminal");
+var terminalClose = document.querySelector("#terminalclose");
+var terminalMinimize = document.querySelector("#terminalminimize");
+var terminalFullscreen = document.querySelector("#terminalfullscreen");
+var terminalBody = document.querySelector("#terminalBody");
+var terminalTitleEl = document.querySelector("#terminalTitle");
+appScreens["terminal"] = terminalScreen;
+
+terminalClose.addEventListener("click", function() {
+  closeWindow(terminalScreen);
+});
+terminalMinimize.addEventListener("click", function() {
+  minimizeWindow(terminalScreen);
+});
+terminalFullscreen.addEventListener("click", function() {
+  toggleFullscreen(terminalScreen);
+});
+terminalScreen.addEventListener("mousedown", function() {
+  bringToFront(terminalScreen);
+});
+terminalScreen.addEventListener("click", function() {
+  terminalBody.focus({ preventScroll: true });
+});
+
+var terminalScreenLines = [];
+var terminalCurrentLine = "";
+var terminalCmdHistory = [];
+var terminalHistoryIndex = 0;
+var terminalCwdNode = null; // null = home (~). Otherwise a real Finder folder node - cd walks the actual filesystem
+var terminalCwdSegments = []; // subfolders below the home directory, e.g. ["Documents"]
+var terminalKnownFolders = ["Applications", "Desktop", "Documents", "Downloads", "Music", "Pictures", "Videos"];
+
+function escapeTerminalHtml(str) {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+// formats a Date like macOS Terminal's login banner - "Tue Aug 25 20:40:44" -
+// honoring whatever time zone is set in Settings, same as the top bar clock
+function formatTerminalLoginTime(date) {
+  var savedTimezone = getSavedTimezone();
+  var opts = { weekday: "short", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false };
+  if (savedTimezone) opts.timeZone = savedTimezone;
+
+  try {
+    var parts = new Intl.DateTimeFormat("en-US", opts).formatToParts(date);
+    var map = {};
+    parts.forEach(function(part) { map[part.type] = part.value; });
+    var hour = map.hour === "24" ? "00" : map.hour;
+    return map.weekday + " " + map.month + " " + map.day + " " + hour + ":" + map.minute + ":" + map.second;
+  } catch (e) {
+    return date.toDateString();
+  }
+}
+
+function terminalUsername() {
+  return localStorage.getItem("tuffos-username") || "guest";
+}
+
+function terminalPromptText() {
+  var shortCwd = terminalCwdNode ? terminalCwdNode.name : "~";
+  return terminalUsername() + "@tuff " + shortCwd + " % ";
+}
+
+function updateTerminalTitle() {
+  if (terminalTitleEl) terminalTitleEl.textContent = terminalUsername() + " — -zsh — 80x24";
+}
+
+function renderTerminal() {
+  var html = terminalScreenLines.map(escapeTerminalHtml).join("\n");
+  if (html) html += "\n";
+  html += escapeTerminalHtml(terminalPromptText()) + escapeTerminalHtml(terminalCurrentLine) +
+    '<span class="setupTerminalCursor">▋</span>';
+  terminalBody.innerHTML = html;
+  terminalBody.scrollTop = terminalBody.scrollHeight;
+}
+
+function terminalHomePath() {
+  return "/Users/" + terminalUsername();
+}
+
+function terminalCwdPath() {
+  if (!terminalCwdNode) return terminalHomePath();
+  var path = getFolderPath(terminalCwdNode); // root folder through to the current one
+  return terminalHomePath() + "/" + path.map(function(node) { return node.name; }).join("/");
+}
+
+// the top-level folders you can "cd" into from home - same ones shown in the
+// Finder sidebar (minus Trash, which isn't really meant to be navigated into)
+function terminalRootFolderByName(name) {
+  var roots = {
+    applications: finderRoots.applications,
+    desktop: finderRoots.desktop,
+    documents: finderRoots.documents,
+    downloads: finderRoots.downloads,
+    music: finderRoots.music,
+    pictures: finderRoots.pictures,
+    videos: finderRoots.videos
+  };
+  return roots[name.toLowerCase()] || null;
+}
+
+// walks a real path (single segment or "documents/hi" style, "~"/"/" for
+// absolute, ".." to go up) against the actual Finder folder tree, starting
+// from wherever the terminal currently is
+function terminalResolvePath(pathStr) {
+  var node = terminalCwdNode;
+  var rest = pathStr;
+
+  if (rest.indexOf("~") === 0) {
+    node = null;
+    rest = rest.slice(1);
+  } else if (rest.indexOf("/") === 0) {
+    node = null;
+  }
+
+  var segments = rest.split("/").filter(function(seg) { return seg !== "" && seg !== "."; });
+
+  for (var i = 0; i < segments.length; i++) {
+    var seg = segments[i];
+
+    if (seg === "..") {
+      node = node ? (node.parent || null) : null;
+      continue;
+    }
+
+    var candidate = null;
+    if (!node) {
+      candidate = terminalRootFolderByName(seg);
+    } else {
+      var folders = getFolderItems(node).filter(function(item) { return item.type === "folder"; });
+      candidate = folders.filter(function(item) { return item.name.toLowerCase() === seg.toLowerCase(); })[0] || null;
+    }
+
+    if (!candidate) return { error: seg };
+    node = candidate;
+  }
+
+  return { node: node };
+}
+
+function runTerminalCommand(rawCmd) {
+  var cmd = rawCmd.trim();
+  terminalScreenLines.push(terminalPromptText() + rawCmd);
+
+  if (cmd === "") {
+    // just a blank line, nothing to do
+  } else if (cmd === "clear") {
+    terminalScreenLines = [];
+  } else if (cmd === "whoami") {
+    terminalScreenLines.push(terminalUsername());
+  } else if (cmd === "pwd") {
+    terminalScreenLines.push(terminalCwdPath());
+  } else if (cmd === "cd" || cmd === "cd ~") {
+    terminalCwdNode = null;
+  } else if (cmd.indexOf("cd ") === 0) {
+    var target = cmd.slice(3).trim();
+    var result = terminalResolvePath(target);
+    if (result.error) {
+      terminalScreenLines.push("cd: no such file or directory: " + result.error);
+    } else {
+      terminalCwdNode = result.node;
+    }
+  } else if (cmd === "help") {
+    terminalScreenLines.push("Available commands: help, clear, whoami, pwd, cd [folder or folder/subfolder]");
+  } else {
+    terminalScreenLines.push("zsh: command not found: " + cmd.split(" ")[0]);
+  }
+}
+
+// starts (or restarts) a session - shows the *previous* session's timestamp as
+// "Last login", then remembers this session's time for the next one, just like
+// a real terminal does across app launches
+function initTerminalSession() {
+  var previousLogin = localStorage.getItem("tuffos-terminal-lastlogin");
+  var now = new Date();
+  var nowFormatted = formatTerminalLoginTime(now);
+
+  terminalScreenLines = ["Last login: " + (previousLogin || nowFormatted) + " on ttys000"];
+  terminalCurrentLine = "";
+  terminalCmdHistory = [];
+  terminalHistoryIndex = 0;
+  terminalCwdNode = null;
+
+  localStorage.setItem("tuffos-terminal-lastlogin", nowFormatted);
+
+  updateTerminalTitle();
+  renderTerminal();
+  terminalBody.focus({ preventScroll: true });
+}
+
+terminalBody.addEventListener("keydown", function(e) {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+
+  if (e.key === "Enter") {
+    e.preventDefault();
+    var cmd = terminalCurrentLine;
+    runTerminalCommand(cmd);
+    if (cmd.trim() !== "") terminalCmdHistory.push(cmd);
+    terminalHistoryIndex = terminalCmdHistory.length;
+    terminalCurrentLine = "";
+    renderTerminal();
+    return;
+  }
+
+  if (e.key === "Backspace") {
+    e.preventDefault();
+    terminalCurrentLine = terminalCurrentLine.slice(0, -1);
+    renderTerminal();
+    return;
+  }
+
+  if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (terminalHistoryIndex > 0) {
+      terminalHistoryIndex--;
+      terminalCurrentLine = terminalCmdHistory[terminalHistoryIndex] || "";
+      renderTerminal();
+    }
+    return;
+  }
+
+  if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (terminalHistoryIndex < terminalCmdHistory.length) {
+      terminalHistoryIndex++;
+      terminalCurrentLine = terminalCmdHistory[terminalHistoryIndex] || "";
+      renderTerminal();
+    }
+    return;
+  }
+
+  if (e.key.length === 1) {
+    e.preventDefault();
+    terminalCurrentLine += e.key;
+    renderTerminal();
+  }
+});
+
 // ---- File Manager ----
 // Finder-inspired browser file manager with a virtual filesystem and web OS
 // app associations.
@@ -3016,6 +3311,7 @@ function buildFinderRoots() {
       createFinderNode({ name: "Settings", type: "file", kind: "app", association: "settings" }),
       createFinderNode({ name: "Browser", type: "file", kind: "app", association: "browser" }),
       createFinderNode({ name: "Photo Booth", type: "file", kind: "app", association: "photobooth" }),
+      createFinderNode({ name: "Terminal", type: "file", kind: "app", association: "terminal" }),
       createFinderNode({ name: "Files", type: "file", kind: "app", association: "explorer" }),
       createFinderNode({ name: "Bin", type: "file", kind: "app", association: "bin" })
     ]
@@ -3691,6 +3987,15 @@ function restoreTrashItem(item) {
 function renameFinderItem(item, newName) {
   if (!item || !newName || newName === item.name) return;
 
+  // no two items in the same folder are allowed to share a name
+  var nameTaken = getFolderItems(finderState.currentFolder).some(function(entry) {
+    return entry.id !== item.id && entry.name.toLowerCase() === newName.toLowerCase();
+  });
+  if (nameTaken) {
+    alert("NO!!! you cant have 2 things with the same name");
+    return;
+  }
+
   if (finderState.currentFolder.id === "documents" && item.id.indexOf("doc:") === 0) {
     var docs = loadTextDocs();
     docs[newName] = docs[item.name] || item.content || "";
@@ -3709,6 +4014,13 @@ function renameFinderItem(item, newName) {
     delete vids[item.name];
     saveVideoDocs(vids);
     item.id = "vid:" + newName;
+  } else if (finderState.currentFolder.id === "desktop" && item.type === "folder" && desktopFolders[item.id]) {
+    // Desktop folders keep their real name in desktopFolders (that's what the
+    // actual desktop icon reads), not on the Finder node itself - rename that too
+    // or the next re-render will just snap the name right back
+    desktopFolders[item.id].name = newName;
+    saveDesktopFolders(desktopFolders);
+    renderDesktopIcons();
   } else {
     item.name = newName;
   }
@@ -3720,6 +4032,16 @@ function renameFinderItem(item, newName) {
 function createNewFolderInCurrent() {
   var folder = finderState.currentFolder;
   if (!folder || folder.id === "trash") return;
+
+  if (folder.id === "desktop") {
+    // Desktop's contents live in desktopFolders/desktopIconPositions, not in
+    // folder.children, so a new folder has to be created the same way the
+    // desktop's own right-click "New Folder" does it
+    var newId = createNewDesktopFolder();
+    setSelection([newId]);
+    return;
+  }
+
   var baseName = "New Folder";
   var existingNames = getFolderItems(folder).map(function(item) { return item.name; });
   var name = baseName;
@@ -3932,6 +4254,12 @@ function renderFinder() {
     button.addEventListener("click", function(e) {
       e.preventDefault();
       e.stopPropagation();
+      // stopPropagation above means this click never bubbles up to the grid's
+      // own click listener (which is what normally focuses it), and Safari in
+      // particular doesn't auto-focus a <button> on click either - so without
+      // this, the grid never has focus and pressing Return right after
+      // clicking an item does nothing
+      finderGridEl.focus({ preventScroll: true });
 
       if (e.shiftKey) {
         if (!finderState.anchorId) finderState.anchorId = finderState.focusId || item.id;
@@ -3953,6 +4281,7 @@ function renderFinder() {
       if (finderState.currentFolder.id === "trash") {
         var trashItem = getItemById(item.id);
         if (trashItem) {
+          if (!confirm('"' + trashItem.name + '" is in the Trash. Put it back first before you can open it?')) return;
           restoreTrashItem(trashItem);
           finderTrashItems = finderTrashItems.filter(function(entry) { return entry.id !== item.id; });
           clearFinderSelection();
@@ -4230,7 +4559,16 @@ finderSidebarItemsEl.addEventListener("click", function(e) {
 
 function openFinderSelectedItem() {
   var item = getItemById(finderState.focusId || finderState.selectedIds[0]);
-  if (item) openFinderItem(item);
+  if (!item) return;
+  if (finderState.currentFolder.id === "trash") {
+    if (!confirm('"' + item.name + '" is in the Trash. Put it back first before you can open it?')) return;
+    restoreTrashItem(item);
+    finderTrashItems = finderTrashItems.filter(function(entry) { return entry.id !== item.id; });
+    clearFinderSelection();
+    renderFinder();
+    return;
+  }
+  openFinderItem(item);
 }
 
 explorerScreen.addEventListener("keydown", function(e) {
@@ -4303,8 +4641,14 @@ function saveCurrentTextFile() {
   var docs = loadTextDocs();
   var newName = textFileNameInput.value.trim() || currentTextFileName;
   if (newName !== currentTextFileName) {
-    delete docs[currentTextFileName];
-    currentTextFileName = newName;
+    if (docs.hasOwnProperty(newName)) {
+      alert("NO!!! you cant have 2 things with the same name");
+      textFileNameInput.value = currentTextFileName;
+      newName = currentTextFileName;
+    } else {
+      delete docs[currentTextFileName];
+      currentTextFileName = newName;
+    }
   }
   docs[currentTextFileName] = textFileBody.value;
   saveTextDocs(docs);
