@@ -353,6 +353,10 @@ body.light-mode #explorer.finderWindow .finderSidebar {
 body.light-mode {
   background-color: #eee !important;
 }
+#loginEnterPasswordBtn:hover {
+  background-color: rgba(255,255,255,0.12) !important;
+  border-color: rgba(255,255,255,0.9) !important;
+}
 body.light-mode #topBar {
   background-color: rgba(255,255,255,0.6) !important;
   color: #111 !important;
@@ -921,12 +925,50 @@ html, body {
       <div id="systemPowerOverlayContent"></div>
     </div>
 
-    <div id="loginScreenOverlay" style="display:none; position:fixed; inset:0; background:#000; z-index:9999999; align-items:center; justify-content:center; flex-direction:column; color:#fff; font-family:'Trattatello', Helvetica, fantasy;">
-      <img id="loginScreenAvatar" style="width:90px;height:90px;border-radius:50%;object-fit:cover;background:#333;margin-bottom:14px;" />
-      <p id="loginScreenUsername" style="margin:0;font-size:20px;"></p>
-      <input id="loginScreenPassword" type="password" placeholder="Password" style="margin-top:16px;padding:8px 12px;border-radius:6px;border:none;font-size:14px;width:200px;text-align:center;" />
-      <p id="loginScreenHint" style="font-size:12px;color:#888;margin-top:8px;cursor:pointer;min-height:14px;"></p>
-      <p id="loginScreenError" style="font-size:12px;color:#ff8080;margin-top:2px;min-height:14px;"></p>
+    <div id="loginScreenOverlay" style="display:none; position:fixed; inset:0; background-color:#000; background-size:cover; background-position:center; z-index:9999999; align-items:center; justify-content:flex-start; flex-direction:column; color:#fff; font-family:'Lato', -apple-system, BlinkMacSystemFont, 'SF Pro Display', Helvetica, Arial, sans-serif;">
+
+      <div id="loginScreenTopRight" style="position:absolute; top:18px; right:22px; display:flex; align-items:center; gap:18px; font-size:14px; font-weight:600; text-shadow:0 1px 6px rgba(0,0,0,0.5);">
+        <span id="loginScreenLanguage" style="display:flex; align-items:center; gap:6px;">
+          Tuffian
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M6 9h.01M10 9h.01M14 9h.01M18 9h.01M6 13h.01M10 13h.01M14 13h.01M18 13h.01M8 17h8"/></svg>
+        </span>
+        <div id="loginWifiMenuWrapper" style="position:relative; display:flex; align-items:center;">
+          <button id="loginWifiMenuBtn" type="button" title="Wi-Fi" style="background: transparent; border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 20px; height: 20px; padding: 0; color: #fff;">
+            <svg id="loginWifiMenuIconOn" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12.5a10 10 0 0 1 14 0"/>
+              <path d="M8.5 16a5 5 0 0 1 7 0"/>
+              <circle cx="12" cy="19.5" r="1" fill="currentColor" stroke="none"/>
+            </svg>
+            <svg id="loginWifiMenuIconOff" style="display: none;" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12.5a10 10 0 0 1 5.5-2.8"/>
+              <path d="M13.5 9.7a10 10 0 0 1 5 2.8"/>
+              <path d="M8.5 16a5 5 0 0 1 4-1.5"/>
+              <path d="M14 15a5 5 0 0 1 1.5 1"/>
+              <circle cx="12" cy="19.5" r="1" fill="currentColor" stroke="none"/>
+              <line x1="3" y1="3" x2="21" y2="21"/>
+            </svg>
+          </button>
+          <div id="loginWifiDropdown" style="display: none; position: absolute; top: 26px; right: 0; width: 230px; background: #1f1f23; color: #fff; border: 1px solid rgba(255,255,255,0.12); border-radius: 10px; padding: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.45); z-index: 999999; font-size: 13px; font-weight: 400; font-family: 'Lato', -apple-system, BlinkMacSystemFont, sans-serif; text-shadow:none;">
+            <div id="loginWifiDropdownList"></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="loginScreenDateTime" style="text-align:center; margin-top:64px; text-shadow:0 2px 24px rgba(0,0,0,0.35); pointer-events:none;">
+        <p id="loginScreenDate" style="margin:0; font-size:40px; font-weight:700; opacity:0.92;"></p>
+        <p id="loginScreenTime" style="margin:0; font-size:132px; font-weight:900; line-height:1.05; opacity:0.85;"></p>
+      </div>
+
+      <div style="flex:1; min-height:0;"></div>
+
+      <div style="display:flex; flex-direction:column; align-items:center; margin-bottom:90px;">
+        <img id="loginScreenAvatar" style="width:88px;height:88px;border-radius:50%;object-fit:cover;background:#333;margin-bottom:10px; box-shadow:0 4px 18px rgba(0,0,0,0.4); border: 2px solid rgba(255,255,255,0.5);" />
+        <p id="loginScreenUsername" style="margin:0 0 14px 0;font-size:21px; font-weight:600; text-shadow:0 2px 10px rgba(0,0,0,0.45);"></p>
+        <button id="loginEnterPasswordBtn" type="button" style="background:transparent; color:#fff; border:1.5px solid rgba(255,255,255,0.65); border-radius:20px; padding:10px 22px; font-size:13px; font-weight:700; cursor:pointer; font-family:inherit; backdrop-filter: blur(4px); transition: background-color 0.15s ease, border-color 0.15s ease;">Enter Password</button>
+        <input id="loginScreenPassword" type="password" placeholder="Password" style="display:none; margin-top:2px; padding:9px 14px; border-radius:20px; border:none; font-size:14px; width:200px; text-align:center; outline:none;" />
+        <p id="loginScreenHint" style="font-size:12px;color:rgba(255,255,255,0.75);margin-top:8px;cursor:pointer;min-height:14px;"></p>
+        <p id="loginScreenError" style="font-size:12px;color:#ff8080;margin-top:2px;min-height:14px;"></p>
+      </div>
     </div>
 
     <div id="desktopApps" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;"></div>
@@ -1188,3 +1230,6 @@ html, body {
 
 </body>
 </html>
+
+
+

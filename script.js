@@ -1918,13 +1918,21 @@ var wifiMenuIconOn = document.querySelector("#wifiMenuIconOn");
 var wifiMenuIconOff = document.querySelector("#wifiMenuIconOff");
 var wifiTopbarConnecting = false;
 
+var loginWifiMenuIconOn = document.querySelector("#loginWifiMenuIconOn");
+var loginWifiMenuIconOff = document.querySelector("#loginWifiMenuIconOff");
+
 function refreshWifiTopbarIcon() {
   var connected = isWifiConnected();
   if (wifiMenuIconOn) wifiMenuIconOn.style.display = connected ? "block" : "none";
   if (wifiMenuIconOff) wifiMenuIconOff.style.display = connected ? "none" : "block";
+  if (loginWifiMenuIconOn) loginWifiMenuIconOn.style.display = connected ? "block" : "none";
+  if (loginWifiMenuIconOff) loginWifiMenuIconOff.style.display = connected ? "none" : "block";
 }
 
-function renderWifiDropdown() {
+// used by both the topbar Wi-Fi menu and the login screen's own Wi-Fi menu -
+// just builds the network list into whichever container is passed in
+function renderWifiDropdown(targetListEl) {
+  var wifiDropdownList = targetListEl || document.querySelector("#wifiDropdownList");
   if (!wifiDropdownList) return;
   wifiDropdownList.innerHTML = "";
 
@@ -1957,7 +1965,7 @@ function renderWifiDropdown() {
       setTimeout(function() {
         wifiTopbarConnecting = false;
         setWifiConnected(true, net.name);
-        renderWifiDropdown();
+        renderWifiDropdown(wifiDropdownList);
         refreshSetupWifiRowsIfOpen();
       }, 800);
     });
@@ -1977,7 +1985,7 @@ function renderWifiDropdown() {
     offRow.textContent = "Turn Wi-Fi Off";
     offRow.addEventListener("click", function() {
       setWifiConnected(false);
-      renderWifiDropdown();
+      renderWifiDropdown(wifiDropdownList);
       refreshSetupWifiRowsIfOpen();
     });
     wifiDropdownList.appendChild(offRow);
@@ -1985,7 +1993,8 @@ function renderWifiDropdown() {
 }
 
 function refreshTopbarWifiDropdownIfOpen() {
-  if (wifiDropdown && wifiDropdown.style.display === "block") renderWifiDropdown();
+  if (wifiDropdown && wifiDropdown.style.display === "block") renderWifiDropdown(document.querySelector("#wifiDropdownList"));
+  if (loginWifiDropdown && loginWifiDropdown.style.display === "block") renderWifiDropdown(document.querySelector("#loginWifiDropdownList"));
 }
 
 // keeps the Setup Assistant's own Wi-Fi step list visually in sync if a
@@ -2005,15 +2014,17 @@ function refreshSetupWifiRowsIfOpen() {
   if (setupWifiContinueBtn) setupWifiContinueBtn.disabled = false;
 }
 
-function toggleWifiDropdown(forceState) {
-  if (!wifiDropdown) return;
-  var isOpen = wifiDropdown.style.display === "block";
+function toggleWifiDropdown(forceState, dropdownEl, listEl) {
+  dropdownEl = dropdownEl || wifiDropdown;
+  listEl = listEl || wifiDropdownList;
+  if (!dropdownEl) return;
+  var isOpen = dropdownEl.style.display === "block";
   var shouldOpen = typeof forceState === "boolean" ? forceState : !isOpen;
   if (shouldOpen) {
-    renderWifiDropdown();
-    wifiDropdown.style.display = "block";
+    renderWifiDropdown(listEl);
+    dropdownEl.style.display = "block";
   } else {
-    wifiDropdown.style.display = "none";
+    dropdownEl.style.display = "none";
   }
 }
 
@@ -2028,6 +2039,24 @@ document.addEventListener("click", function(e) {
   if (!wifiDropdown || wifiDropdown.style.display !== "block") return;
   if (e.target.closest("#wifiMenuWrapper")) return;
   toggleWifiDropdown(false);
+});
+
+// ---- login screen's own Wi-Fi menu (same fake networks, own dropdown) ----
+var loginWifiMenuBtn = document.querySelector("#loginWifiMenuBtn");
+var loginWifiDropdown = document.querySelector("#loginWifiDropdown");
+var loginWifiDropdownList = document.querySelector("#loginWifiDropdownList");
+
+if (loginWifiMenuBtn) {
+  loginWifiMenuBtn.addEventListener("click", function(e) {
+    e.stopPropagation();
+    toggleWifiDropdown(undefined, loginWifiDropdown, loginWifiDropdownList);
+  });
+}
+
+document.addEventListener("click", function(e) {
+  if (!loginWifiDropdown || loginWifiDropdown.style.display !== "block") return;
+  if (e.target.closest("#loginWifiMenuWrapper")) return;
+  toggleWifiDropdown(false, loginWifiDropdown, loginWifiDropdownList);
 });
 
 refreshWifiTopbarIcon();
@@ -2107,6 +2136,44 @@ var loginScreenPassword = document.querySelector("#loginScreenPassword");
 var loginScreenHint = document.querySelector("#loginScreenHint");
 var loginScreenError = document.querySelector("#loginScreenError");
 
+// login screen's date/time, styled like a lock screen clock - honors whatever
+// time zone is set in Settings, same source of truth as the top bar clock
+function updateLoginScreenDateTime() {
+  var dateEl = document.querySelector("#loginScreenDate");
+  var timeEl = document.querySelector("#loginScreenTime");
+  if (!dateEl || !timeEl) return;
+
+  var now = new Date();
+  var savedTimezone = getSavedTimezone();
+  var tzOpt = savedTimezone ? { timeZone: savedTimezone } : {};
+
+  try {
+    var weekday = now.toLocaleDateString(undefined, Object.assign({ weekday: "long" }, tzOpt));
+    var day = now.toLocaleDateString(undefined, Object.assign({ day: "numeric" }, tzOpt));
+    var month = now.toLocaleDateString(undefined, Object.assign({ month: "long" }, tzOpt));
+    dateEl.textContent = weekday + " " + day + " " + month;
+
+    var timeStr = now.toLocaleTimeString(undefined, Object.assign({ hour: "numeric", minute: "2-digit" }, tzOpt));
+    timeEl.textContent = timeStr.replace(/\s?[AP]M$/i, "");
+  } catch (e) {
+    dateEl.textContent = now.toDateString();
+    timeEl.textContent = now.toLocaleTimeString();
+  }
+}
+setInterval(function() {
+  if (loginScreenOverlay && loginScreenOverlay.style.display === "flex") updateLoginScreenDateTime();
+}, 1000);
+
+// "Enter Password" starts as a pill button and swaps for the actual input once clicked
+var loginEnterPasswordBtn = document.querySelector("#loginEnterPasswordBtn");
+if (loginEnterPasswordBtn) {
+  loginEnterPasswordBtn.addEventListener("click", function() {
+    loginEnterPasswordBtn.style.display = "none";
+    loginScreenPassword.style.display = "block";
+    loginScreenPassword.focus();
+  });
+}
+
 function showLoginScreen() {
   var username = localStorage.getItem("tuffos-username") || "";
   var avatar = localStorage.getItem("tuffos-avatar") || "./idk.jpg";
@@ -2121,8 +2188,17 @@ function showLoginScreen() {
     loginScreenHint.textContent = hint ? "Hint: " + hint : "";
   };
 
+  // reset back to the collapsed "Enter Password" button state each time this shows
+  if (loginEnterPasswordBtn) loginEnterPasswordBtn.style.display = "inline-block";
+  loginScreenPassword.style.display = "none";
+
+  // match whatever wallpaper is currently set on the desktop
+  loginScreenOverlay.style.backgroundImage = document.body.style.backgroundImage;
+
+  updateLoginScreenDateTime();
+  refreshWifiTopbarIcon();
+
   loginScreenOverlay.style.display = "flex";
-  loginScreenPassword.focus();
 
   function onKeydown(e) {
     if (e.key !== "Enter") return;
