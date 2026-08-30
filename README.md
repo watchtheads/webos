@@ -6,7 +6,7 @@ Features:
 
 • Setup assisant on your first visit - a welcome, privacy policy, terms and conditions, migration assistant, make an account (username password and character), pick your timezone, wifi, dark or light mode, and after all of that a terminal thing where it says the stuff u pick and 'installs" ;)
 
-• a boot screen when u visit the site or reload 
+• a login screen where it has your background, the time, the date, the language you are using and the wifi changer thing and a hint if u set one
 
 • draggable windows (drag above the little line and the windows move)
 
@@ -20,13 +20,14 @@ Features:
 
 • desktop (yeah theres a desktop lol but like u can drag apps on it to have them on the desktop and you can right click to do the sstuf)
 
-• right click to do stuff (make a new folder, change the wallpaper, use stacks0
+• right click to do stuff (make a new folder, change the wallpaper, use stacks)
 
 • start menu options (the 🥣 at the top top left has a thing to lock your screen, put tuffos to sleep, restart it or shutdown)
 
 • wifi thing on the top (has different wifi connections you can connect to. You need to be connected to a wifi to use the browser)
 
 • migration assisant (the thing in the setup assisant to restore ur stuff. You can download a backup in the settings)
+
 
 
 
@@ -48,7 +49,12 @@ Apps
 
 • photobooth (takes photos, a 4 grid shot, records and shows up in the files app)
 
-• files (it has an applications, desktop, documents, downloads, pictures, music, videos and trash category thing. You can also rename stuff, make new folders, drag stuff between folders, empty the trash)
+• files (it has an applications, desktop, documents, downloads, pictures, music, videos and trash category thing. You can also rename stuff, make new folders, drag stuff between folders, empty the trash, search bar and you can alias things to make a copy of it where you can put the copy somewhere else and it leads to the real first one)
+
+• terminal ( a terminal which the commands whoami,cd,  pwd, clear and help)
+
+
+
 
 credits:
 
