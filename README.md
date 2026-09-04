@@ -34,6 +34,7 @@ Features:
 
 
 
+
 Apps
 
 • notes (write notes )
@@ -48,7 +49,12 @@ Apps
 
 • photobooth (takes photos, a 4 grid shot, records and shows up in the files app)
 
-• files (it has an applications, desktop, documents, downloads, pictures, music, videos and trash category thing. You can also rename stuff, make new folders, drag stuff between folders, empty the trash)
+• files (it has an applications, desktop, documents, downloads, pictures, music, videos and trash category thing. You can also rename stuff, make new folders, drag stuff between folders, empty the trash, search bar and you can alias things to make a copy of it where you can put the copy somewhere else and it leads to the real first one)
+
+• terminal ( a terminal which the commands whoami,cd,  pwd, clear and help)
+
+
+
 
 • terminal ( a terminal which the commands whoami, pwd, clear and help)
 
