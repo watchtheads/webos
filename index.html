@@ -6,6 +6,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
+/* ok i know this file is a mess, been meaning to split the css out for like
+   3 months now. maybe this weekend lol */
 :root {
   --finder-window-bg: #1d2026;
   --finder-panel-bg: #252a31;
@@ -47,7 +49,7 @@ textarea {
   font-size: 14px;
 }
 .finderWindow {
-  width: min(1100px, 94vw);
+  width: min(1100px, 94vw); /* 1100 just looked right on my monitor, no real math behind it */
   height: min(760px, 84vh);
   padding: 14px;
   border-radius: 20px;
@@ -334,6 +336,7 @@ body.light-mode #explorer.finderWindow .finderSidebar {
   background: linear-gradient(135deg, transparent 50%, rgba(255,255,255,0.4) 50%);
   border-bottom-right-radius: 16px;
 }
+/* calculator buttons - copied the ios colors from memory, probably slightly off */
 .calcBtn, #calcEquals, #calcClear, #calcSign, #calcBackspace {
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -665,7 +668,8 @@ html, body {
 </head>
 <body style="background-color: #000000; color: #ffffff; font-family: 'Trattatello', Helvetica, fantasy; background-image: url(./sand.jpg); background-size: cover; height: 100vh;">
 
-  <!-- fake boot splash, script.js fades this out after ~1.8s -->
+  <!-- fake boot splash, script.js fades this out after ~1.8s. the timing is
+       hardcoded and kinda janky, sorry, fix it later maybe -->
   <div id="bootScreen" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #000; color: #fff; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999999; font-family: 'Trattatello', Helvetica, fantasy;">
   <h1 style="margin: 0; font-size: 32px;">TuffOS</h1>
   <p style="margin-top: 8px; font-size: 14px; color: #aaa;">it's always time to eat cereal</p>
@@ -674,7 +678,10 @@ html, body {
   </div>
 </div>
 
-<!-- ================= Setup Assistant ================= -->
+<!-- ================= Setup Assistant =================
+     loosely ripping off the macOS setup flow bc it's just a good flow tbh,
+     don't come after me apple -->
+
 <div id="setupWizard" style="display:none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: #0d0d10; color: #fff; z-index: 999998; align-items: center; justify-content: center;">
 
   <!-- 1. Welcome -->
@@ -808,7 +815,7 @@ html, body {
 
   </div>
 
-  <!-- 7. Wi-Fi -->
+  <!-- 7. Wi-Fi - the network list is 100% fake btw, none of these actually go anywhere -->
   <div class="setupCard" data-step="wifi">
     <div class="setupEmoji">📶</div>
     <h2 class="setupTitle">Connect to Wi-Fi</h2>
@@ -874,7 +881,8 @@ html, body {
 
 </div>
 
-<!-- Terms agreement confirmation modal -->
+<!-- Terms agreement confirmation modal - added this after almost skipping
+     a real confirm step, felt weird not having one -->
 <div id="setupAgreeModalOverlay" class="setupModalOverlay">
   <div class="setupModal">
     <h3 style="margin-top: 0;">Terms &amp; Conditions</h3>
@@ -1099,8 +1107,12 @@ html, body {
       <div class="resizeHandle"></div>
     </div>
 
-    <!-- "browser" - now just a fixed iframe pointing at the new-tab site -->
-    <!-- File Explorer - real files from the project + text docs saved in localStorage -->
+    <!-- "browser" - now just a fixed iframe pointing at the new-tab site.
+         used to have a real url bar but iframe + cross origin stuff made it
+         a pain, gave up and just pinned it -->
+    <!-- File Explorer - real files from the project + text docs saved in localStorage.
+         this one took forever to get right lol -->
+
     <div id="explorer" class="finderWindow">
       <div id="explorerheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
         <div id="explorerclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
@@ -1155,6 +1167,8 @@ html, body {
     </div>
 
     <div id="taskbar" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; backdrop-filter: blur(10px); background-color: rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 8px 12px; z-index: 9999;">
+  <!-- dockOpenApps and dockMinimizedApps are split by the little divider -
+       apps you minimize slide over to the right side, same as real macOS -->
   <div id="dockOpenApps" style="display: flex; gap: 12px;"></div>
   <div id="dockDivider" style="width: 1px; height: 36px; background-color: rgba(255,255,255,0.3); display: none;"></div>
   <div id="dockMinimizedApps" style="display: flex; gap: 12px;"></div>
@@ -1168,7 +1182,9 @@ html, body {
 
 <div id="finderContextMenu" style="display: none; position: absolute; background-color: #2b2b2b; color: #fff; border-radius: 8px; padding: 6px; z-index: 999999; box-shadow: 0 4px 12px rgba(0,0,0,0.4); min-width: 170px;"></div>
 
-<!-- photobooth window - still/4-shot/movie modes, everything gets dumped into the thumb strip at the bottom -->
+<!-- photobooth window - still/4-shot/movie modes, everything gets dumped into
+     the thumb strip at the bottom. shoutout to actual mac photo booth for the
+     grid countdown idea, always thought that was fun -->
 <div id="photobooth" style="border: solid; width: 500px; height: 460px; padding: 16px; border-radius: 16px; background-color: #3A1F1F; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column;">
   <div id="photoboothheader" style="display: flex; align-items: center; gap: 6px; user-select: none;">
     <div id="photoboothclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
@@ -1230,6 +1246,3 @@ html, body {
 
 </body>
 </html>
-
-
-

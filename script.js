@@ -1,8 +1,11 @@
 // TuffOS main script - window manager, dock, and all the little apps
 // (yes it's a lot of vanilla JS in one file, i'll split it up eventually - probably)
+// started this as a "quick weekend thing" back in like... idk, a while ago now.
+// still not done. never will be probably, that's kind of the fun of it
 
 
-// floating blue rectangle that shows up when you drag a window near an edge
+// floating blue rectangle that shows up when you drag a window near an edge.
+// stole this idea from windows snap, not gonna pretend otherwise
 var snapPreview = document.createElement("div");
 snapPreview.id = "snapPreview";
 snapPreview.style.position = "fixed";
@@ -14,7 +17,7 @@ snapPreview.style.display = "none";
 snapPreview.style.pointerEvents = "none";
 document.body.appendChild(snapPreview);
 
-var SNAP_ZONE = 24; // how close to the edge (px) before it snaps
+var SNAP_ZONE = 24; // how close to the edge (px) before it snaps - 24 just felt right, didn't measure anything
 
 function getSnapZone(x, y) {
   var vw = window.innerWidth;
@@ -153,6 +156,8 @@ function formatClockTime(date) {
 }
 
 // ---- dragging windows around (with the snap-to-edge thing above) ----
+// this function has been rewritten like 4 times, current version finally
+// doesn't have the jitter bug the old ones did
 function dragElement(element, disableSnap) {
   var initialX = 0;
   var initialY = 0;
@@ -252,6 +257,7 @@ function dragElement(element, disableSnap) {
 }
 
 // ---- resizing windows via the little corner handle ----
+// nothing fancy, just tracks the mouse delta from where you grabbed it
 function makeResizable(element) {
   var handle = element.querySelector(".resizeHandle");
   if (!handle) return;
@@ -444,6 +450,8 @@ var appLabels = {
 var appDragPayload = null;
 
 function createDockIcon(id) {
+  // built by hand instead of templating this since there's only like 9 apps,
+  // wasn't worth setting up a whole template system for
   var wrapper = document.createElement("div");
   wrapper.style.display = "flex";
   wrapper.style.flexDirection = "column";
@@ -522,6 +530,16 @@ function showDockIconContextMenu(x, y, id) {
   menu.appendChild(openRow);
 
   if (id !== "bin") {
+    var aliasRow = document.createElement("div");
+    aliasRow.className = "contextMenuItem";
+    aliasRow.textContent = "🔗 Make Alias";
+    aliasRow.addEventListener("click", function() {
+      menu.style.display = "none";
+      var appNode = createFinderNode({ name: appLabels[id] || id, type: "file", kind: "app", association: id });
+      createAliasInFolder(appNode, finderRoots.applications);
+    });
+    menu.appendChild(aliasRow);
+
     var removeRow = document.createElement("div");
     removeRow.className = "contextMenuItem";
     removeRow.textContent = "🗑️ Remove from Dock";
@@ -581,6 +599,8 @@ for (var appId in appIcons) {
 // the Files app (under Applications). Dragging an icon from either of those onto
 // the desktop drops a shortcut wherever you release it. Positions persist in
 // localStorage so they stay put between visits.
+// this whole desktop-icon system took way longer than i expected, positioning
+// math is more annoying than it looks
 var desktopAppsEl = document.querySelector("#desktopApps");
 var desktopIconEls = {};
 
@@ -617,6 +637,175 @@ var desktopFolders = loadDesktopFolders();
 // one Finder node per desktop folder, built lazily and reused so anything
 // dropped inside one (via the Files app) survives across re-renders
 var desktopFolderNodes = {};
+
+// ---- Desktop aliases ----
+// Separate from desktopFolders/desktopIconPositions above: dragging a real
+// folder onto the Desktop now actually relocates it there (see
+// relocateFolderToDesktop). An "alias" is a distinct, explicitly-created
+// shortcut (via the "Make Alias" context menu action) that points at the
+// original app or folder without moving it - named "<name> alias" and shown
+// with a small arrow badge under the icon, like a classic Mac OS alias.
+//
+// App aliases persist fully across reload (all they need is the app's
+// association string). Folder aliases persist their name/position too, but
+// like any other in-memory folder reference elsewhere in TuffOS, the link
+// back to the actual folder's contents doesn't survive a reload - opening one
+// after a fresh load won't do anything until it's re-created.
+function loadDesktopAliases() {
+  try {
+    var raw = localStorage.getItem("tuffos-desktop-aliases");
+    return raw ? JSON.parse(raw) : {};
+  } catch (e) {
+    return {};
+  }
+}
+function saveDesktopAliases(aliases) {
+  localStorage.setItem("tuffos-desktop-aliases", JSON.stringify(aliases));
+}
+var desktopAliases = loadDesktopAliases();
+// transient id -> real folder node, for folder-type aliases. Same limitation
+// as desktopFolderNodes: this link doesn't survive a page reload
+var desktopAliasNodes = {};
+
+function uniqueDesktopName(baseName) {
+  var existing = Object.keys(desktopFolders).map(function(id) { return desktopFolders[id].name; })
+    .concat(Object.keys(desktopAliases).map(function(id) { return desktopAliases[id].name; }))
+    .concat(Object.keys(desktopIconPositions).filter(function(id) { return !!appIcons[id]; }).map(function(id) { return appLabels[id] || id; }));
+  var name = baseName;
+  var counter = 2;
+  while (existing.indexOf(name) !== -1) {
+    name = baseName.replace(/ \d+$/, "") + " " + counter;
+    counter++;
+  }
+  return name;
+}
+
+// creates a real alias shortcut on the Desktop for an app or folder, without
+// moving or duplicating the original
+function createDesktopAlias(item, clientX, clientY) {
+  var isApp = item.kind === "app" && !!item.association;
+  var isFolder = item.type === "folder";
+  if (!isApp && !isFolder) return; // only apps and folders can live on the Desktop right now
+
+  var iconSize = 64;
+  var px = typeof clientX === "number" ? clientX : window.innerWidth / 2;
+  var py = typeof clientY === "number" ? clientY : window.innerHeight / 2;
+  var maxX = window.innerWidth - iconSize - 16;
+  var maxY = window.innerHeight - iconSize - 16;
+  var x = Math.min(Math.max(px - iconSize / 2, 8), Math.max(8, maxX));
+  var y = Math.min(Math.max(py - iconSize / 2, 56), Math.max(56, maxY));
+
+  var aliasId = "desktop-alias-" + Date.now() + "-" + Math.floor(Math.random() * 10000);
+  var aliasName = uniqueDesktopName(item.name + " alias");
+
+  desktopAliases[aliasId] = {
+    name: aliasName,
+    x: x,
+    y: y,
+    kind: isApp ? "app" : "folder",
+    association: isApp ? item.association : null
+  };
+  if (isFolder) desktopAliasNodes[aliasId] = item;
+
+  saveDesktopAliases(desktopAliases);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+// creates an alias in a *regular* Finder folder (Applications, Documents, etc.)
+// - i.e. right next to where you made it, instead of jumping to the Desktop.
+// The Desktop is a special case (see createDesktopAlias above) since its
+// contents aren't stored as regular folder.children.
+function uniqueNameInFolder(folder, baseName) {
+  var existingNames = getFolderItems(folder).map(function(i) { return i.name; });
+  var name = baseName;
+  var counter = 2;
+  while (existingNames.indexOf(name) !== -1) {
+    name = baseName.replace(/ \d+$/, "") + " " + counter;
+    counter++;
+  }
+  return name;
+}
+
+function createAliasInFolder(item, folder) {
+  var isApp = item.kind === "app" && !!item.association;
+  var isFolder = item.type === "folder";
+  if (!isApp && !isFolder) return;
+  if (!folder || folder.id === "trash") return;
+
+  var aliasName = uniqueNameInFolder(folder, item.name + " alias");
+  var targetFolder = item.isAlias && item.aliasTarget ? item.aliasTarget : item;
+
+  var aliasNode = createFinderNode({
+    name: aliasName,
+    type: isApp ? "file" : "folder",
+    kind: isApp ? "app" : "folder",
+    association: isApp ? item.association : null
+  });
+  aliasNode.isAlias = true;
+  if (!isApp) aliasNode.aliasTarget = targetFolder;
+
+  addFinderFileToFolder(folder, aliasNode);
+  return aliasNode;
+}
+
+function placeDesktopAliasAt(id, clientX, clientY) {
+  var entry = desktopAliases[id];
+  if (!entry) return;
+  var iconSize = 64;
+  var maxX = window.innerWidth - iconSize - 16;
+  var maxY = window.innerHeight - iconSize - 16;
+  entry.x = Math.min(Math.max(clientX - iconSize / 2, 8), Math.max(8, maxX));
+  entry.y = Math.min(Math.max(clientY - iconSize / 2, 56), Math.max(56, maxY));
+  saveDesktopAliases(desktopAliases);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+function openDesktopAlias(id) {
+  var entry = desktopAliases[id];
+  if (!entry) return;
+  if (entry.kind === "app" && entry.association) {
+    openDesktopApp(entry.association);
+    return;
+  }
+  var node = desktopAliasNodes[id];
+  if (!node) return; // folder alias doesn't survive a reload, same as any other in-memory folder link
+  openWindow(explorerScreen);
+  setCurrentFolder(node, true);
+}
+
+function removeDesktopAlias(id) {
+  delete desktopAliases[id];
+  delete desktopAliasNodes[id];
+  saveDesktopAliases(desktopAliases);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
+// actually relocates a real folder onto the Desktop (its contents move with
+// it - this is not an alias). Used when a folder is dragged out of the Files
+// app straight onto the Desktop.
+function relocateFolderToDesktop(node, clientX, clientY) {
+  var sourceFolder = node.parent;
+  if (sourceFolder && sourceFolder.id !== "desktop") {
+    removeItemFromFolder(sourceFolder, node);
+  }
+
+  var iconSize = 64;
+  var maxX = window.innerWidth - iconSize - 16;
+  var maxY = window.innerHeight - iconSize - 16;
+  var x = Math.min(Math.max(clientX - iconSize / 2, 8), Math.max(8, maxX));
+  var y = Math.min(Math.max(clientY - iconSize / 2, 56), Math.max(56, maxY));
+
+  desktopFolders[node.id] = { name: node.name, x: x, y: y };
+  desktopFolderNodes[node.id] = node;
+  node.parent = finderRoots ? finderRoots.desktop : null;
+
+  saveDesktopFolders(desktopFolders);
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
 function getOrCreateDesktopFolderNode(id, parentFolder) {
   var entry = desktopFolders[id];
   if (!entry) return null;
@@ -640,6 +829,7 @@ function getOrCreateDesktopFolderNode(id, parentFolder) {
 // Stacks mode: instead of icons sitting wherever they were dropped, arrange
 // everything into neat columns (fills straight down, then wraps into the next
 // column over - so it ends up as one tidy rectangle instead of scattered)
+// added this on a whim, wasn't originally planned, kinda glad i did though
 function isStacksEnabled() {
   return localStorage.getItem("tuffos-desktop-stacks") === "true";
 }
@@ -789,15 +979,29 @@ function renameDesktopFolder(id) {
   }
 }
 
-function deleteDesktopFolder(id) {
+// removes a Desktop folder and drops a trashable copy into finderTrashItems -
+// shared by the Desktop's own right-click "Delete" and by deleting the same
+// folder from within the Files app (moveFinderItemToTrash's desktop branch)
+function trashDesktopFolder(id) {
   var entry = desktopFolders[id];
   if (!entry) return;
-  if (!confirm("Delete \"" + entry.name + "\"? This can't be undone.")) return;
+  var node = getOrCreateDesktopFolderNode(id, finderRoots.desktop);
+  var origin = { folderId: "desktop", desktopFolderEntry: { x: entry.x, y: entry.y, alias: entry.alias } };
+
   delete desktopFolders[id];
   delete desktopFolderNodes[id];
   saveDesktopFolders(desktopFolders);
   renderDesktopIcons();
   refreshFinderIfViewingDesktop();
+
+  finderTrashItems.unshift(cloneForTrash(node, origin));
+}
+
+function deleteDesktopFolder(id) {
+  var entry = desktopFolders[id];
+  if (!entry) return;
+  if (!confirm("Delete \"" + entry.name + "\"? You can restore it from the Bin.")) return;
+  trashDesktopFolder(id);
 }
 
 function openDesktopFolder(id) {
@@ -878,6 +1082,69 @@ function showDesktopFolderContextMenu(x, y, id) {
   positionContextMenuOnScreen(menu, x, y);
 }
 
+// right-click menu for a Desktop alias shortcut
+function showDesktopAliasContextMenu(x, y, id) {
+  var menu = document.querySelector("#finderContextMenu");
+  if (!menu) return;
+  menu.innerHTML = "";
+
+  var openRow = document.createElement("div");
+  openRow.className = "contextMenuItem";
+  openRow.textContent = "📂 Open";
+  openRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    openDesktopAlias(id);
+  });
+
+  var renameRow = document.createElement("div");
+  renameRow.className = "contextMenuItem";
+  renameRow.textContent = "✏️ Rename";
+  renameRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    renameDesktopAlias(id);
+  });
+
+  var removeRow = document.createElement("div");
+  removeRow.className = "contextMenuItem";
+  removeRow.textContent = "🗑️ Remove Alias";
+  removeRow.addEventListener("click", function() {
+    menu.style.display = "none";
+    removeDesktopAlias(id);
+  });
+
+  menu.appendChild(openRow);
+  menu.appendChild(renameRow);
+  menu.appendChild(removeRow);
+  positionContextMenuOnScreen(menu, x, y);
+}
+
+// an alias can be renamed to literally anything - it's just a shortcut, so
+// there's no "real name" it needs to hold onto (the little arrow badge is
+// what actually marks it as an alias, not the name)
+function renameDesktopAlias(id) {
+  var entry = desktopAliases[id];
+  if (!entry) return;
+  var renamed = prompt("Rename alias:", entry.name);
+  if (!renamed || !renamed.trim()) return;
+  var newName = renamed.trim();
+
+  var nameTaken = Object.keys(desktopFolders).some(function(fid) {
+    return desktopFolders[fid].name.toLowerCase() === newName.toLowerCase();
+  }) || Object.keys(desktopAliases).some(function(aid) {
+    return aid !== id && desktopAliases[aid].name.toLowerCase() === newName.toLowerCase();
+  }) || Object.keys(desktopIconPositions).filter(function(appId) { return !!appIcons[appId]; }).some(function(appId) {
+    return (appLabels[appId] || appId).toLowerCase() === newName.toLowerCase();
+  });
+  if (nameTaken) {
+    alert("NO!!! you cant have 2 things with the same name");
+    return;
+  }
+
+  entry.name = newName;
+  renderDesktopIcons();
+  refreshFinderIfViewingDesktop();
+}
+
 function renderDesktopIcons() {
   desktopAppsEl.innerHTML = "";
   desktopIconEls = {};
@@ -888,15 +1155,18 @@ function renderDesktopIcons() {
   appIds.sort(function(a, b) { return (appLabels[a] || a).localeCompare(appLabels[b] || b); });
   var folderIds = Object.keys(desktopFolders);
   folderIds.sort(function(a, b) { return desktopFolders[a].name.localeCompare(desktopFolders[b].name); });
+  var aliasIds = Object.keys(desktopAliases);
+  aliasIds.sort(function(a, b) { return desktopAliases[a].name.localeCompare(desktopAliases[b].name); });
 
-  // folders first, then apps - matches how most desktop OSes group things when tidied up
+  // folders first, then aliases, then apps
   var entries = folderIds.map(function(id) { return { id: id, kind: "folder" }; })
+    .concat(aliasIds.map(function(id) { return { id: id, kind: "alias" }; }))
     .concat(appIds.map(function(id) { return { id: id, kind: "app" }; }));
 
   var stackPositions = stacked ? computeStackPositions(entries.length) : null;
 
   entries.forEach(function(entry, index) {
-    var pos = stacked ? stackPositions[index] : (entry.kind === "app" ? desktopIconPositions[entry.id] : desktopFolders[entry.id]);
+    var pos = stacked ? stackPositions[index] : (entry.kind === "app" ? desktopIconPositions[entry.id] : entry.kind === "alias" ? desktopAliases[entry.id] : desktopFolders[entry.id]);
     if (!pos) return;
 
     var wrapper = document.createElement("div");
@@ -930,6 +1200,37 @@ function renderDesktopIcons() {
       iconWrap.innerHTML = fileIconMarkup("folder");
       wrapper.appendChild(iconWrap);
       label.textContent = folderEntry.name;
+    } else if (entry.kind === "alias") {
+      var aliasEntry = desktopAliases[entry.id];
+      var aliasIconWrap = document.createElement("div");
+      aliasIconWrap.style.width = "64px";
+      aliasIconWrap.style.height = "64px";
+      aliasIconWrap.style.margin = "0 auto";
+      aliasIconWrap.style.color = "#eee";
+      if (aliasEntry.kind === "app") {
+        var aliasImg = document.createElement("img");
+        aliasImg.src = appIcons[aliasEntry.association] || "./notes.png";
+        aliasImg.style.width = "100%";
+        aliasImg.style.height = "100%";
+        aliasImg.style.borderRadius = "16px";
+        aliasImg.style.objectFit = "cover";
+        aliasIconWrap.appendChild(aliasImg);
+      } else {
+        aliasIconWrap.innerHTML = fileIconMarkup("folder");
+      }
+      wrapper.appendChild(aliasIconWrap);
+
+      // classic alias arrow badge - sits just below the icon (left-aligned)
+      // instead of overlapping its corner, so it never clips into the artwork
+      var aliasArrow = document.createElement("div");
+      aliasArrow.style.width = "100%";
+      aliasArrow.style.display = "flex";
+      aliasArrow.style.justifyContent = "flex-start";
+      aliasArrow.style.marginTop = "2px";
+      aliasArrow.innerHTML = '<img src="./aliasarrow.png" alt="" style="width:14px;height:14px;display:block;filter: drop-shadow(0 0 2px rgba(0,0,0,0.6));" />';
+      wrapper.appendChild(aliasArrow);
+
+      label.textContent = aliasEntry.name;
     } else {
       var img = document.createElement("img");
       img.src = appIcons[entry.id];
@@ -944,7 +1245,7 @@ function renderDesktopIcons() {
 
     if (!stacked) {
       wrapper.addEventListener("dragstart", function(e) {
-        appDragPayload = entry.kind === "app" ? { id: entry.id } : { folderId: entry.id };
+        appDragPayload = entry.kind === "app" ? { id: entry.id } : entry.kind === "alias" ? { aliasId: entry.id } : { folderId: entry.id };
         e.dataTransfer.effectAllowed = "move";
         try { e.dataTransfer.setData("text/plain", entry.id); } catch (err) {}
       });
@@ -966,6 +1267,8 @@ function renderDesktopIcons() {
     wrapper.addEventListener("dblclick", function() {
       if (entry.kind === "folder") {
         openDesktopFolder(entry.id);
+      } else if (entry.kind === "alias") {
+        openDesktopAlias(entry.id);
       } else {
         openDesktopApp(entry.id);
       }
@@ -977,6 +1280,8 @@ function renderDesktopIcons() {
       e.preventDefault();
       if (entry.kind === "folder") {
         renameDesktopFolder(entry.id);
+      } else if (entry.kind === "alias") {
+        renameDesktopAlias(entry.id);
       }
     });
     wrapper.addEventListener("contextmenu", function(e) {
@@ -984,6 +1289,8 @@ function renderDesktopIcons() {
       e.stopPropagation();
       if (entry.kind === "folder") {
         showDesktopFolderContextMenu(e.pageX, e.pageY, entry.id);
+      } else if (entry.kind === "alias") {
+        showDesktopAliasContextMenu(e.pageX, e.pageY, entry.id);
       } else {
         showDesktopIconContextMenu(e.pageX, e.pageY, entry.id);
       }
@@ -1010,8 +1317,10 @@ document.body.addEventListener("drop", function(e) {
   e.preventDefault();
   if (appDragPayload.folderId) {
     placeDesktopFolderAt(appDragPayload.folderId, e.clientX, e.clientY);
+  } else if (appDragPayload.aliasId) {
+    placeDesktopAliasAt(appDragPayload.aliasId, e.clientX, e.clientY);
   } else if (appDragPayload.folderNode) {
-    addDesktopFolderAlias(appDragPayload.folderNode, e.clientX, e.clientY);
+    relocateFolderToDesktop(appDragPayload.folderNode, e.clientX, e.clientY);
   } else {
     placeDesktopIcon(appDragPayload.id, e.clientX, e.clientY);
   }
@@ -1333,7 +1642,8 @@ calcButtons.forEach(function(btn) {
 });
 
 document.querySelector("#calcEquals").addEventListener("click", function() {
-  // yeah it's eval, i know. it's a toy calculator, not a bank
+  // yeah it's eval, i know. it's a toy calculator, not a bank.
+  // could swap this for a real parser at some point but eh, low priority
   try {
     calcDisplay.value = eval(calcDisplay.value);
   } catch (e) {
@@ -1468,6 +1778,8 @@ updateSettingsAppearanceButtons();
 
 // ---- reusable "search by country, pick a time zone" combo box - used by both
 // the Settings window and the Setup Assistant's Time Zone step ----
+// this got shared between two places after i copy-pasted it once and got
+// annoyed keeping them in sync, so refactored into one function
 function initTimezoneCombo(input, resultsEl, onSelectionChange) {
   if (!input || !resultsEl) return;
 
@@ -1689,6 +2001,7 @@ browserScreen.addEventListener("mousedown", function() {
 
 // ---- shared Wi-Fi connection state (used by the topbar Wi-Fi menu, the Setup
 // Assistant's Wi-Fi step, and the Browser app's online/offline placeholder) ----
+// none of this actually connects to anything real obviously, it's all fake state
 function isWifiConnected() {
   return localStorage.getItem("tuffos-wifi-connected") === "true";
 }
@@ -1783,6 +2096,8 @@ dragElement(document.querySelector("#photobooth"));
 // =====================================================================
 // ---- first-run Setup Assistant (macOS-style, multi-step) ----
 // =====================================================================
+// this section alone is probably a third of the file lol. got a bit carried
+// away with it but it was fun to build
 
 function applyTheme(theme) {
   document.body.classList.toggle("light-mode", theme === "light");
@@ -2371,9 +2686,22 @@ function refreshLiveStateAfterRestore() {
   desktopIconPositions = loadDesktopIconPositions();
   desktopFolders = loadDesktopFolders();
   desktopFolderNodes = {};
+  desktopAliases = loadDesktopAliases();
+  desktopAliasNodes = {};
   renderDesktopIcons();
 
   rebuildDockFromStorage();
+
+  // folders/aliases living outside the Desktop (Documents, Downloads, Music,
+  // Pictures, Videos, Applications) need their in-memory tree rebuilt from
+  // the freshly-restored tuffos-finder-tree key - drop everything except the
+  // hardcoded master app list, then reload from storage
+  FINDER_TREE_ROOT_IDS.forEach(function(rootId) {
+    var root = finderRoots[rootId];
+    if (!root) return;
+    root.children = (root.children || []).filter(function(c) { return isDynamicFinderNode(c); });
+  });
+  restoreFinderTree();
 
   // Pictures/Videos/Documents already read straight from storage on every
   // render, so a Finder re-render is all they need to pick up restored files
@@ -2717,6 +3045,7 @@ photoboothScreen.addEventListener("mousedown", function () {
 });
 
 // --- webcam logic ---
+// getUserMedia stuff, fairly standard, nothing too weird here
 var video = document.querySelector("#videoElement");
 var canvas = document.querySelector("#canvas");
 var ctx = canvas.getContext("2d");
@@ -3061,6 +3390,8 @@ shutterBtn.addEventListener("click", function () {
 // ---- Terminal ----
 // A tiny fake zsh-alike. Not a real shell - just enough commands to poke around
 // and feel like a terminal (clear/whoami/pwd/date/echo/ls/help/exit).
+// half tempted to wire up a real command set someday but that's a whole
+// rabbit hole and this thing is supposed to be a toy, not a real OS
 dragElement(document.querySelector("#terminal"));
 
 var terminalScreen = document.querySelector("#terminal");
@@ -3306,7 +3637,8 @@ terminalBody.addEventListener("keydown", function(e) {
 
 // ---- File Manager ----
 // Finder-inspired browser file manager with a virtual filesystem and web OS
-// app associations.
+// app associations. honestly the biggest/messiest chunk of this whole file,
+// grew way past what i originally planned for it
 dragElement(document.querySelector("#explorer"));
 
 var explorerScreen = document.querySelector("#explorer");
@@ -3472,6 +3804,137 @@ function buildFinderRoots() {
 }
 
 var finderRoots = buildFinderRoots();
+
+// ---- Generic Finder folder tree persistence ----
+// added this one later on to fix a bug where aliases/folders outside the
+// desktop weren't saving - see the comment block below for the why
+// Desktop has its own localStorage-backed system (desktopFolders/desktopAliases,
+// see above), but folders and aliases created anywhere else (Documents,
+// Downloads, Music, Pictures, Videos, Applications) were only ever living in
+// the in-memory folder.children arrays built fresh by buildFinderRoots() on
+// every load - so they quietly vanished on refresh. This mirrors the same
+// idea as the Desktop store, just generalized to every root folder.
+var FINDER_TREE_ROOT_IDS = ["applications", "documents", "downloads", "music", "pictures", "videos"];
+
+// doc:/pic:/vid: entries come from their own dedicated stores, desktop:/desktopalias:
+// entries come from the Desktop's own stores, and plain (non-alias) app entries
+// are the hardcoded master list rebuilt by buildFinderRoots() every time - none
+// of these should be serialized into the generic tree, only real user-made
+// folders and aliases
+function isDynamicFinderNode(node) {
+  return node.id.indexOf("doc:") === 0 || node.id.indexOf("pic:") === 0 ||
+    node.id.indexOf("vid:") === 0 || node.id.indexOf("desktop:") === 0 ||
+    node.id.indexOf("desktopalias:") === 0 ||
+    (node.kind === "app" && !node.isAlias);
+}
+
+// identifies a folder by root id + chain of names (rather than its runtime id,
+// which is just a counter and isn't stable across reloads) so alias targets
+// can be re-resolved after everything's been rebuilt
+function buildFinderNamePath(node) {
+  var path = getFolderPath(node);
+  return { rootId: path[0].id, names: path.slice(1).map(function(n) { return n.name; }) };
+}
+
+function resolveFinderNamePath(namePath) {
+  if (!namePath) return null;
+  var current = finderRoots[namePath.rootId];
+  if (!current) return null;
+  for (var i = 0; i < namePath.names.length; i++) {
+    var name = namePath.names[i];
+    var match = getFolderItems(current).filter(function(it) {
+      return it.type === "folder" && !it.isAlias && it.name === name;
+    })[0];
+    if (!match) return null;
+    current = match;
+  }
+  return current;
+}
+
+function serializeFinderTreeNode(node) {
+  var data = { name: node.name, type: node.type, kind: node.kind, association: node.association || null, isAlias: !!node.isAlias };
+  if (node.isAlias) {
+    if (node.aliasTarget) data.aliasTargetPath = buildFinderNamePath(node.aliasTarget);
+  } else if (node.type === "folder") {
+    data.children = (node.children || []).filter(function(c) { return !isDynamicFinderNode(c); }).map(serializeFinderTreeNode);
+  }
+  return data;
+}
+
+function saveFinderTree() {
+  // wrapped end-to-end (not just the localStorage write) - this gets called
+  // from mid-mutation spots like removeItemFromFolder/moveFinderItemToTrash,
+  // and a thrown error here must never abort the caller (e.g. skip actually
+  // moving the item into finderTrashItems)
+  try {
+    var tree = {};
+    FINDER_TREE_ROOT_IDS.forEach(function(rootId) {
+      var root = finderRoots[rootId];
+      if (!root) return;
+      tree[rootId] = (root.children || []).filter(function(c) { return !isDynamicFinderNode(c); }).map(serializeFinderTreeNode);
+    });
+    localStorage.setItem("tuffos-finder-tree", JSON.stringify(tree));
+  } catch (e) {
+    console.warn("Couldn't save Finder folder tree.", e);
+  }
+}
+
+function deserializeFinderTreeNode(data, parent, aliasQueue) {
+  var node = createFinderNode({
+    name: data.name,
+    type: data.type,
+    kind: data.kind,
+    association: data.association,
+    children: (data.type === "folder" && !data.isAlias) ? [] : null
+  });
+  node.parent = parent;
+  node.isAlias = !!data.isAlias;
+  if (node.isAlias) {
+    if (data.aliasTargetPath) aliasQueue.push({ node: node, path: data.aliasTargetPath });
+  } else if (data.type === "folder" && Array.isArray(data.children)) {
+    data.children.forEach(function(childData) {
+      node.children.push(deserializeFinderTreeNode(childData, node, aliasQueue));
+    });
+  }
+  return node;
+}
+
+function restoreFinderTree() {
+  var raw;
+  try {
+    raw = localStorage.getItem("tuffos-finder-tree");
+  } catch (e) {
+    raw = null;
+  }
+  if (!raw) return;
+  var tree;
+  try {
+    tree = JSON.parse(raw);
+  } catch (e) {
+    return;
+  }
+  if (!tree || typeof tree !== "object") return;
+
+  var aliasQueue = [];
+  FINDER_TREE_ROOT_IDS.forEach(function(rootId) {
+    var root = finderRoots[rootId];
+    var list = tree[rootId];
+    if (!root || !Array.isArray(list)) return;
+    if (!root.children) root.children = [];
+    list.forEach(function(data) {
+      root.children.push(deserializeFinderTreeNode(data, root, aliasQueue));
+    });
+  });
+
+  // alias targets are resolved only after every root's folders exist, so an
+  // alias can point at a folder in a different root without ordering issues
+  aliasQueue.forEach(function(entry) {
+    entry.node.aliasTarget = resolveFinderNamePath(entry.path);
+  });
+}
+
+restoreFinderTree();
+
 finderState.currentFolder = finderRoots.documents;
 
 function loadTextDocs() {
@@ -3572,6 +4035,7 @@ function addFinderFileToFolder(folder, node) {
   node.parent = folder;
   if (!folder.children) folder.children = [];
   folder.children.unshift(node);
+  saveFinderTree();
   if (finderState.currentFolder && finderState.currentFolder.id === folder.id) {
     renderFinder();
   }
@@ -3617,7 +4081,26 @@ function getFolderItems(folder) {
     var deskFolderItems = Object.keys(desktopFolders).map(function(id) {
       return getOrCreateDesktopFolderNode(id, folder);
     }).filter(Boolean);
-    return deskFolderItems.concat(deskAppItems);
+    // aliases made while browsing the Desktop (or dragged there) live in
+    // desktopAliases, not folder.children - build matching virtual nodes so
+    // the Files app shows the exact same shortcuts as the real Desktop does
+    var deskAliasItems = Object.keys(desktopAliases).map(function(id) {
+      var aliasEntry = desktopAliases[id];
+      var isApp = aliasEntry.kind === "app";
+      var node = createFinderNode({
+        id: "desktopalias:" + id,
+        name: aliasEntry.name,
+        type: isApp ? "file" : "folder",
+        kind: isApp ? "app" : "folder",
+        association: isApp ? aliasEntry.association : null
+      });
+      node.parent = folder;
+      node.isAlias = true;
+      node._desktopAliasId = id;
+      if (!isApp) node.aliasTarget = desktopAliasNodes[id] || null;
+      return node;
+    });
+    return deskFolderItems.concat(deskAliasItems).concat(deskAppItems);
   }
   if (folder.id === "documents") {
     var docs = loadTextDocs();
@@ -3766,6 +4249,16 @@ function getItemById(id) {
 
 function openFinderItem(item) {
   if (!item) return;
+
+  if (item.isAlias) {
+    if (item.kind === "app" && item.association) {
+      openDesktopApp(item.association);
+    } else if (item.aliasTarget) {
+      setCurrentFolder(item.aliasTarget, true);
+    }
+    return;
+  }
+
   if (item.type === "folder") {
     setCurrentFolder(item, true);
     return;
@@ -3853,28 +4346,47 @@ function removeItemFromFolder(folder, item) {
   var list = folder.children || [];
   var index = list.findIndex(function(child) { return child.id === item.id; });
   if (index >= 0) list.splice(index, 1);
+  saveFinderTree();
 }
 
-// Bin, Files, and Settings are core system apps and can't be deleted/trashed
-// from the Finder - they can still be unpinned from the Dock, just not removed
-var UNDELETABLE_APP_ASSOCIATIONS = ["bin", "explorer", "settings"];
+// Every real app is protected from deletion in the Files app - you can still
+// unpin one from the Dock, or make an alias of it, but the actual app entry
+// itself can't be trashed
+var UNDELETABLE_APP_ASSOCIATIONS = Object.keys(appIcons);
 
 function isUndeletableAppItem(item) {
-  return !!item && item.kind === "app" && UNDELETABLE_APP_ASSOCIATIONS.indexOf(item.association) !== -1;
+  return !!item && item.kind === "app" && !item.isAlias && UNDELETABLE_APP_ASSOCIATIONS.indexOf(item.association) !== -1;
 }
 
-// apps keep their real name always - only folders (and regular files) can be renamed
+// apps keep their real name always - only folders (and regular files) can be
+// renamed, but an alias of an app can be renamed to anything since it's just
+// a shortcut, not the real thing
 function canRenameFinderItem(item) {
-  return !!item && item.kind !== "app";
+  return !!item && (item.kind !== "app" || item.isAlias);
 }
 
 function moveFinderItemToTrash(item, sourceFolder) {
   if (isUndeletableAppItem(item)) return; // can't trash core system apps
-  if (item.kind === "app" && item.association && isAppWindowOpen(item.association)) {
+  if (item.kind === "app" && item.association && !item.isAlias && isAppWindowOpen(item.association)) {
     alert("\"" + item.name + "\" is open. Close it first, then try deleting it again.");
     return;
   }
   var folder = sourceFolder || item.parent || finderState.currentFolder;
+
+  // aliases sitting in the Desktop's virtual listing aren't real folder
+  // children - just drop the shortcut, same as "Remove Alias" on the real Desktop
+  if (folder.id === "desktop" && item._desktopAliasId) {
+    removeDesktopAlias(item._desktopAliasId);
+    return;
+  }
+
+  // any other alias (made via "Make Alias" in Documents/Applications/etc) is
+  // just a shortcut, not the real thing - deleting it removes the shortcut
+  // outright instead of sending it to the Bin
+  if (item.isAlias) {
+    removeItemFromFolder(folder, item);
+    return;
+  }
 
   if (folder.id === "trash") {
     var trashIndex = finderTrashItems.findIndex(function(entry) { return entry.id === item.id; });
@@ -3883,14 +4395,10 @@ function moveFinderItemToTrash(item, sourceFolder) {
   }
 
   // Desktop folders live in the desktopFolders map, not as real Finder nodes with
-  // a parent/children chain, so deleting one here is permanent instead of going
-  // through Trash like everything else does
-  if (folder.id === "desktop" && item.kind === "folder") {
-    delete desktopFolders[item.id];
-    delete desktopFolderNodes[item.id];
-    saveDesktopFolders(desktopFolders);
-    renderDesktopIcons();
-    refreshFinderIfViewingDesktop();
+  // a parent/children chain - route through the same Desktop-aware trash helper
+  // used by the Desktop's own "Delete" so it lands in the Bin either way
+  if (folder.id === "desktop" && item.kind === "folder" && desktopFolders[item.id]) {
+    trashDesktopFolder(item.id);
     return;
   }
 
@@ -3919,11 +4427,43 @@ function moveFinderItemToTrash(item, sourceFolder) {
   }
 }
 
+function isDescendantFolder(candidate, ancestor) {
+  var current = candidate;
+  while (current) {
+    if (current.id === ancestor.id) return true;
+    current = current.parent;
+  }
+  return false;
+}
+
 function moveFinderItem(item, destinationFolder) {
   if (!item || !destinationFolder) return;
   if (destinationFolder.id === item.id) return; // can't drop a folder into itself
+  // ...or into one of its own subfolders - that'd create a cycle (a folder
+  // that's its own ancestor), which breaks anything that walks the tree,
+  // including saving it to localStorage
+  if (item.type === "folder" && isDescendantFolder(destinationFolder, item)) return;
   var sourceFolder = item.parent || finderState.currentFolder;
   if (sourceFolder.id === destinationFolder.id) return;
+
+  // dragging a Desktop alias elsewhere: drop it from the Desktop's alias list
+  // and recreate the same shortcut in the destination folder instead
+  if (sourceFolder.id === "desktop" && item._desktopAliasId) {
+    var aliasId = item._desktopAliasId;
+    removeDesktopAlias(aliasId);
+    if (destinationFolder.id !== "desktop") {
+      var recreatedAlias = createFinderNode({
+        name: item.name,
+        type: item.type,
+        kind: item.kind,
+        association: item.association
+      });
+      recreatedAlias.isAlias = true;
+      if (item.type === "folder") recreatedAlias.aliasTarget = item.aliasTarget;
+      addFinderFileToFolder(destinationFolder, recreatedAlias);
+    }
+    return;
+  }
 
   // Desktop's contents live in desktopIconPositions, not folder.children - so an
   // item dragged OUT of Desktop has to be un-placed from there explicitly, or it
@@ -3967,8 +4507,8 @@ function moveFinderItem(item, destinationFolder) {
     if (item.kind === "app" && item.association) {
       placeDesktopIcon(item.association, window.innerWidth / 2, window.innerHeight / 2);
     } else if (item.type === "folder") {
-      // just an alias - the real folder stays exactly where it was
-      addDesktopFolderAlias(item, window.innerWidth / 2, window.innerHeight / 2);
+      // real relocation, not an alias - the folder and its contents actually move
+      relocateFolderToDesktop(item, window.innerWidth / 2, window.innerHeight / 2);
     }
     return; // other file types aren't supported on the Desktop - leave them where they are
   }
@@ -4048,6 +4588,15 @@ function restoreTrashItem(item) {
     if (!desktopIconPositions[item.association]) {
       placeDesktopIcon(item.association, window.innerWidth / 2, window.innerHeight / 2);
     }
+  } else if (destinationFolder.id === "desktop" && item.type === "folder" && item.trashOrigin.desktopFolderEntry) {
+    // put a trashed Desktop folder back into desktopFolders at its old spot,
+    // reusing its original id so anything still referencing this node lines up
+    var savedEntry = item.trashOrigin.desktopFolderEntry;
+    desktopFolders[item.id] = { name: item.name, x: savedEntry.x, y: savedEntry.y, alias: savedEntry.alias };
+    desktopFolderNodes[item.id] = item;
+    item.parent = finderRoots.desktop;
+    saveDesktopFolders(desktopFolders);
+    renderDesktopIcons();
   } else if (destinationFolder.children) {
     var insertIndex = Math.max(0, Math.min(item.trashOrigin.index, destinationFolder.children.length));
     item.parent = destinationFolder;
@@ -4058,6 +4607,8 @@ function restoreTrashItem(item) {
   if (item.kind === "app" && item.association) {
     addToDock(item.association);
   }
+
+  saveFinderTree();
 }
 
 function renameFinderItem(item, newName) {
@@ -4097,11 +4648,16 @@ function renameFinderItem(item, newName) {
     desktopFolders[item.id].name = newName;
     saveDesktopFolders(desktopFolders);
     renderDesktopIcons();
+  } else if (finderState.currentFolder.id === "desktop" && item._desktopAliasId && desktopAliases[item._desktopAliasId]) {
+    desktopAliases[item._desktopAliasId].name = newName;
+    saveDesktopAliases(desktopAliases);
+    renderDesktopIcons();
   } else {
     item.name = newName;
   }
 
   item.name = newName;
+  saveFinderTree();
   renderFinder();
 }
 
@@ -4149,7 +4705,8 @@ function clearFinderSelection() {
 function finderItemMarkup(item) {
   var icon = fileIconMarkup(iconForNode(item));
   var meta = item.meta ? '<div class="finderItemMeta">' + item.meta + '</div>' : "";
-  return '<div class="finderItemIcon">' + icon + '</div><div class="finderItemLabel">' + item.name + '</div>' + meta;
+  var aliasBadge = item.isAlias ? '<div style="width:100%; display:flex; justify-content:flex-start; margin-top:-6px;"><img src="./aliasarrow.png" alt="" style="width:12px;height:12px;display:block;opacity:0.85;" /></div>' : "";
+  return '<div class="finderItemIcon">' + icon + '</div>' + aliasBadge + '<div class="finderItemLabel">' + item.name + '</div>' + meta;
 }
 
 function renderSidebar() {
@@ -4316,10 +4873,11 @@ function renderFinder() {
         e.stopPropagation();
         button.style.boxShadow = "";
         if (!finderDragState) return;
+        var destination = item.isAlias && item.aliasTarget ? item.aliasTarget : item;
         finderDragState.ids.forEach(function(id) {
           if (id === item.id) return;
           var dragged = finderState.viewItems.filter(function(i) { return i.id === id; })[0];
-          if (dragged) moveFinderItem(dragged, item);
+          if (dragged) moveFinderItem(dragged, destination);
         });
         finderDragState = null;
         clearFinderSelection();
@@ -4489,6 +5047,16 @@ function finderContextMenuAction(label, handler) {
   return row;
 }
 
+// when multiple items are selected and the right-clicked item is one of them,
+// context menu actions (Delete etc.) should apply to the whole selection, not
+// just the single item that happened to be under the cursor
+function getContextMenuTargetItems(item) {
+  if (item && finderState.selectedIds.length > 1 && finderState.selectedIds.indexOf(item.id) !== -1) {
+    return finderState.selectedIds.map(getItemById).filter(Boolean);
+  }
+  return item ? [item] : [];
+}
+
 function showFinderContextMenu(x, y, item) {
   if (!finderContextMenuEl) return;
   finderContextMenuEl.innerHTML = "";
@@ -4498,14 +5066,18 @@ function showFinderContextMenu(x, y, item) {
     var isBinItem = isUndeletableAppItem(item);
     if (inTrash) {
       finderContextMenuEl.appendChild(finderContextMenuAction("↩️ Put Back", function() {
-        restoreTrashItem(item);
-        finderTrashItems = finderTrashItems.filter(function(entry) { return entry.id !== item.id; });
+        var targets = getContextMenuTargetItems(item);
+        targets.forEach(function(target) { restoreTrashItem(target); });
+        var targetIds = targets.map(function(t) { return t.id; });
+        finderTrashItems = finderTrashItems.filter(function(entry) { return targetIds.indexOf(entry.id) === -1; });
         clearFinderSelection();
         renderFinder();
       }));
       if (!isBinItem) {
         finderContextMenuEl.appendChild(finderContextMenuAction("🗑️ Delete Permanently", function() {
-          finderTrashItems = finderTrashItems.filter(function(entry) { return entry.id !== item.id; });
+          var targets = getContextMenuTargetItems(item).filter(function(t) { return !isUndeletableAppItem(t); });
+          var targetIds = targets.map(function(t) { return t.id; });
+          finderTrashItems = finderTrashItems.filter(function(entry) { return targetIds.indexOf(entry.id) === -1; });
           clearFinderSelection();
           renderFinder();
         }));
@@ -4514,6 +5086,15 @@ function showFinderContextMenu(x, y, item) {
       finderContextMenuEl.appendChild(finderContextMenuAction("📂 Open", function() {
         openFinderItem(item);
       }));
+      if (item.type === "folder" || (item.kind === "app" && item.association)) {
+        finderContextMenuEl.appendChild(finderContextMenuAction("🔗 Make Alias", function() {
+          if (finderState.currentFolder.id === "desktop") {
+            createDesktopAlias(item);
+          } else {
+            createAliasInFolder(item, finderState.currentFolder);
+          }
+        }));
+      }
       if (canRenameFinderItem(item)) {
         finderContextMenuEl.appendChild(finderContextMenuAction("✏️ Rename", function() {
           var renamed = prompt("Rename:", item.name);
@@ -4522,7 +5103,10 @@ function showFinderContextMenu(x, y, item) {
       }
       if (!isBinItem) {
         finderContextMenuEl.appendChild(finderContextMenuAction("🗑️ Delete", function() {
-          moveFinderItemToTrash(item, finderState.currentFolder);
+          var targets = getContextMenuTargetItems(item);
+          targets.forEach(function(target) {
+            if (!isUndeletableAppItem(target)) moveFinderItemToTrash(target, finderState.currentFolder);
+          });
           clearFinderSelection();
           renderFinder();
         }));
