@@ -431,6 +431,7 @@ var appIcons = {
   photobooth: "./photobooth.png",
   explorer: "./files.png",
   terminal: "./terminal.png",
+  music: "./music.png",
   bin: "./bin.png"
 };
 
@@ -443,6 +444,7 @@ var appLabels = {
   photobooth: "PhotoBooth",
   explorer: "Files",
   terminal: "Terminal",
+  music: "Tuff Music",
   bin: "Bin"
 };
 
@@ -1399,6 +1401,9 @@ function openWindow(element) {
   if (element.id === "terminal" && typeof initTerminalSession === "function") {
     initTerminalSession();
   }
+  if (element.id === "music" && typeof renderMusicApp === "function") {
+    renderMusicApp();
+  }
 }
 
 function minimizeWindow(element) {
@@ -2042,7 +2047,7 @@ document.body.addEventListener("contextmenu", function(e) {
   e.preventDefault();
   // right-clicking on top of an app window shouldn't bring up the bare-desktop
   // menu (New Folder/Change Wallpaper/Use Stacks) - only the empty desktop should
-  if (e.target.closest("#notes, #coffee, #calc, #settings, #browser, #photobooth, #explorer")) return;
+  if (e.target.closest("#notes, #coffee, #calc, #settings, #browser, #photobooth, #explorer, #terminal, #music")) return;
   lastDesktopContextX = e.clientX;
   lastDesktopContextY = e.clientY;
   updateStacksMenuLabel();
@@ -2068,7 +2073,7 @@ document.querySelectorAll(".contextMenuItem").forEach(function(item) {
 });
 
 // hook up resizing on everything except the calculator, too lazy to call this individually per window
-["notes", "coffee", "settings", "browser", "photobooth", "explorer", "terminal"].forEach(function(id) {
+["notes", "coffee", "settings", "browser", "photobooth", "explorer", "terminal", "music"].forEach(function(id) {
   var el = document.getElementById(id);
   if (el) makeResizable(el);
 });
@@ -2682,6 +2687,7 @@ function refreshNotesFromStorage() {
 
 function refreshLiveStateAfterRestore() {
   refreshNotesFromStorage();
+  if (typeof refreshMusicAppFromStorage === "function") refreshMusicAppFromStorage();
 
   desktopIconPositions = loadDesktopIconPositions();
   desktopFolders = loadDesktopFolders();
@@ -3721,6 +3727,7 @@ function buildFinderRoots() {
       createFinderNode({ name: "Photo Booth", type: "file", kind: "app", association: "photobooth" }),
       createFinderNode({ name: "Terminal", type: "file", kind: "app", association: "terminal" }),
       createFinderNode({ name: "Files", type: "file", kind: "app", association: "explorer" }),
+      createFinderNode({ name: "Tuff Music", type: "file", kind: "app", association: "music" }),
       createFinderNode({ name: "Bin", type: "file", kind: "app", association: "bin" })
     ]
   });
@@ -5326,3 +5333,395 @@ textFileClose.addEventListener("click", function() {
   textFileBody.readOnly = false;
   renderFinder(); // refresh in case a rename happened
 });
+
+// =====================================================================
+// ---- Tuff Music ----
+// window chrome/drag/resize/minimize/fullscreen is wired the same as every
+// other app above; this block is just the app's own internals (tabs,
+// radio API, songs catalog, Your Music library + localStorage persistence)
+// =====================================================================
+dragElement(document.querySelector("#music"));
+
+var musicScreen = document.querySelector("#music");
+var musicClose = document.querySelector("#musicclose");
+var musicMinimize = document.querySelector("#musicminimize");
+var musicFullscreen = document.querySelector("#musicfullscreen");
+appScreens["music"] = musicScreen;
+
+musicClose.addEventListener("click", function() {
+  closeWindow(musicScreen);
+});
+musicMinimize.addEventListener("click", function() {
+  minimizeWindow(musicScreen);
+});
+musicFullscreen.addEventListener("click", function() {
+  toggleFullscreen(musicScreen);
+});
+musicScreen.addEventListener("mousedown", function() {
+  bringToFront(musicScreen);
+});
+
+// ---- tab switching ----
+var tmPages = {
+  home: document.querySelector("#tmHomePage"),
+  radio: document.querySelector("#tmRadioPage"),
+  songs: document.querySelector("#tmSongsPage"),
+  yourMusic: document.querySelector("#tmYourMusicPage")
+};
+
+function tmGoToTab(pageId) {
+  Object.keys(tmPages).forEach(function(key) {
+    if (tmPages[key]) tmPages[key].classList.toggle("tmPageActive", key === pageId);
+  });
+  document.querySelectorAll(".tmTabBtn").forEach(function(btn) {
+    btn.classList.toggle("active", btn.dataset.tmPage === pageId);
+  });
+  if (pageId === "yourMusic") tmRenderYourMusic();
+}
+
+document.querySelectorAll(".tmTabBtn").forEach(function(btn) {
+  btn.addEventListener("click", function() {
+    tmGoToTab(btn.dataset.tmPage);
+  });
+});
+
+// ---- Home: Premium trial (purely visual, no real payment/signup - just
+// persisted to localStorage like any other TuffOS preference) ----
+function loadMusicPremiumState() {
+  return localStorage.getItem("tuffos-music-premium") === "true";
+}
+function saveMusicPremiumState(active) {
+  localStorage.setItem("tuffos-music-premium", active ? "true" : "false");
+}
+
+function tmRefreshPremiumUI() {
+  var active = loadMusicPremiumState();
+  var badge = document.querySelector("#tmPremiumBadge");
+  var text = document.querySelector("#tmPremiumText");
+  var btn = document.querySelector("#tmPremiumBtn");
+  if (!badge || !text || !btn) return;
+  if (active) {
+    badge.style.display = "inline-block";
+    text.textContent = "You're on your 30-day free trial. Enjoy ad-free radio and unlimited downloads to Your Music.";
+    btn.textContent = "Trial Active";
+    btn.style.background = "#333";
+    btn.disabled = true;
+  } else {
+    badge.style.display = "none";
+    text.textContent = "No ads on radio stations, unlimited song downloads to Your Music, and early access to new features. 30 days free, cancel anytime.";
+    btn.textContent = "Start Free Trial";
+    btn.style.background = "#3b82f6";
+    btn.disabled = false;
+  }
+}
+
+function tmStartTrial() {
+  if (loadMusicPremiumState()) return;
+  saveMusicPremiumState(true);
+  tmRefreshPremiumUI();
+}
+
+var tmPremiumBtn = document.querySelector("#tmPremiumBtn");
+if (tmPremiumBtn) tmPremiumBtn.addEventListener("click", tmStartTrial);
+
+document.querySelectorAll("[data-tm-goto]").forEach(function(el) {
+  el.addEventListener("click", function() {
+    tmGoToTab(el.dataset.tmGoto);
+  });
+});
+
+// ---- Radio (Radio Browser API - unchanged behavior from the standalone
+// preview, just namespaced to tm* ids so it can't collide with anything
+// else in TuffOS) ----
+var TM_API_SERVERS = [
+  "https://de1.api.radio-browser.info",
+  "https://nl1.api.radio-browser.info",
+  "https://at1.api.radio-browser.info"
+];
+
+function tmEscapeHTML(text) {
+  var div = document.createElement("div");
+  div.textContent = text || "";
+  return div.innerHTML;
+}
+
+function tmGetStations() {
+  var attempt = function(index) {
+    if (index >= TM_API_SERVERS.length) {
+      return Promise.reject(new Error("All Radio Browser servers failed."));
+    }
+    var server = TM_API_SERVERS[index];
+    return fetch(server + "/json/stations/bycountry/Australia")
+      .then(function(response) {
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        return response.json();
+      })
+      .catch(function(error) {
+        console.warn("Server failed:", server, error);
+        return attempt(index + 1);
+      });
+  };
+  return attempt(0);
+}
+
+function tmLoadStations() {
+  var stationsContainer = document.querySelector("#tmStations");
+  var loading = document.querySelector("#tmLoading");
+  if (!stationsContainer || !loading) return;
+
+  stationsContainer.innerHTML = "";
+  loading.textContent = "Loading Australian radio stations...";
+
+  tmGetStations().then(function(stations) {
+    var playable = stations.filter(function(s) { return s.url_resolved && s.lastcheckok === 1; });
+    loading.textContent = "Found " + playable.length + " playable stations.";
+
+    playable.forEach(function(station) {
+      var card = document.createElement("div");
+      card.className = "tmStation";
+      var logo = station.favicon || "https://via.placeholder.com/70?text=📻";
+      card.innerHTML =
+        '<img src="' + tmEscapeHTML(logo) + '" alt="" onerror="this.src=\'https://via.placeholder.com/70?text=📻\'">' +
+        '<div class="tmStationName">' + tmEscapeHTML(station.name) + '</div>' +
+        '<div class="tmStationInfo">📍 ' + tmEscapeHTML(station.state || "Australia") + '</div>' +
+        '<div class="tmStationInfo">🎵 ' + tmEscapeHTML(station.tags || "Radio") + '</div>';
+      card.addEventListener("click", function() {
+        tmPlayStation(station.name, station.url_resolved);
+      });
+      stationsContainer.appendChild(card);
+    });
+  }).catch(function(error) {
+    console.error(error);
+    loading.textContent = "❌ Could not load the radio stations. Check the browser console for details.";
+  });
+}
+
+function tmPlayStation(name, url) {
+  var audio = document.querySelector("#tmAudio");
+  var player = document.querySelector("#tmPlayer");
+  var nowPlaying = document.querySelector("#tmNowPlaying");
+  if (!audio || !player || !nowPlaying) return;
+
+  nowPlaying.textContent = "📻 " + name;
+  audio.src = url;
+  player.style.display = "block";
+  audio.play().catch(function() {
+    nowPlaying.textContent = "📻 " + name + " — press ▶ play";
+  });
+}
+
+var tmLoadStationsBtn = document.querySelector("#tmLoadStationsBtn");
+if (tmLoadStationsBtn) tmLoadStationsBtn.addEventListener("click", tmLoadStations);
+
+// ---- Songs catalog - "downloading" adds a track to Your Music, which is
+// persisted to localStorage same as any other TuffOS app data ----
+var musicSongCatalog = [
+  { id: "s1", name: "Fluffing a Duck", artist: "Kevin MacLeod", file: "fluffingaduck.mp3", icon: "fluffingaduck.png" },
+  { id: "s2", name: "Homer Let the Bart's Out", artist: "Kevin MacLeod", file: "homerletthebartsoutdododooodooo.mp3", icon: "homerletthebartsout.png" },
+  { id: "s3", name: "Investigations", artist: "Kevin MacLeod", file: "investigations.mp3", icon: "investigations.png" },
+  { id: "s4", name: "Monkeys Spinning", artist: "Kevin MacLeod", file: "monkeyspinning.mp3", icon: "monkeysspinning.png" },
+  { id: "s5", name: "Elevator", artist: "Kevin MacLeod", file: "elevator.mp3", icon: "elevator.png" },
+  { id: "s6", name: "If I Had a Chicken", artist: "Kevin MacLeod", file: "ifihadachicken.mp3", icon: "ifihadachicken.png" },
+  { id: "s7", name: "Sneaky Snitch", artist: "Kevin MacLeod", file: "sneakysnitch.mp3", icon: "sneakysnitch.png" }
+];
+
+// ---- Your Music library persistence (same write-through-to-storage
+// pattern as notes/pictures/videos elsewhere in TuffOS) ----
+function loadMusicLibrary() {
+  try {
+    var raw = localStorage.getItem("tuffos-music-library");
+    var parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    return [];
+  }
+}
+function saveMusicLibrary(library) {
+  try {
+    localStorage.setItem("tuffos-music-library", JSON.stringify(library));
+  } catch (e) {
+    console.warn("Couldn't save Your Music library - localStorage is probably full.", e);
+  }
+}
+
+function tmRenderSongs() {
+  var songsListEl = document.querySelector("#tmSongsList");
+  if (!songsListEl) return;
+  var library = loadMusicLibrary();
+  songsListEl.innerHTML = "";
+
+  musicSongCatalog.forEach(function(song) {
+    var alreadyDownloaded = library.some(function(t) { return t.id === song.id; });
+
+    var row = document.createElement("div");
+    row.className = "tmSongRow";
+    row.innerHTML =
+      '<img class="tmSongArt" src="' + song.icon + '" alt="" onerror="this.style.background=\'#444\'; this.src=\'\';">' +
+      '<div class="tmSongMeta">' +
+        '<div class="tmSongName">' + song.name + '</div>' +
+        '<div class="tmSongArtist">' + song.artist + '</div>' +
+      '</div>';
+
+    var btn = document.createElement("button");
+    btn.className = "tmDownloadBtn" + (alreadyDownloaded ? " downloaded" : "");
+    btn.textContent = alreadyDownloaded ? "✓ In Your Music" : "Download";
+    btn.addEventListener("click", function() {
+      if (alreadyDownloaded) return;
+      tmDownloadSong(song);
+    });
+
+    row.appendChild(btn);
+    songsListEl.appendChild(row);
+  });
+}
+
+function tmDownloadSong(song) {
+  var library = loadMusicLibrary();
+  library.push({
+    id: song.id,
+    name: song.name,
+    artist: song.artist,
+    icon: song.icon,
+    file: song.file,
+    source: "catalog"
+  });
+  saveMusicLibrary(library);
+  tmRenderSongs();
+  tmUpdateHomeLibraryCount();
+}
+
+function tmUpdateHomeLibraryCount() {
+  var el = document.querySelector("#tmHomeLibraryCount");
+  if (!el) return;
+  var count = loadMusicLibrary().length;
+  el.textContent = count + (count === 1 ? " track" : " tracks");
+}
+
+function tmRenderYourMusic() {
+  var listEl = document.querySelector("#tmYourMusicList");
+  var emptyEl = document.querySelector("#tmYourMusicEmpty");
+  if (!listEl || !emptyEl) return;
+
+  var library = loadMusicLibrary();
+  listEl.innerHTML = "";
+  emptyEl.style.display = library.length ? "none" : "block";
+
+  library.forEach(function(track, index) {
+    var row = document.createElement("div");
+    row.className = "tmSongRow";
+    var artHtml = track.icon
+      ? '<img class="tmSongArt" src="' + track.icon + '" alt="" onerror="this.style.background=\'#444\'; this.src=\'\';">'
+      : '<div class="tmSongArt" style="background:#444"></div>';
+    row.innerHTML =
+      artHtml +
+      '<div class="tmSongMeta">' +
+        '<div class="tmSongName">' + tmEscapeHTML(track.name) + '</div>' +
+        '<div class="tmSongArtist">' + tmEscapeHTML(track.artist || "") + '</div>' +
+      '</div>' +
+      '<span class="tmSourceTag ' + (track.source === "device" ? "device" : "catalog") + '">' +
+        (track.source === "device" ? "From device" : "Catalog") +
+      '</span>';
+
+    var playBtn = document.createElement("button");
+    playBtn.className = "tmDownloadBtn";
+    playBtn.textContent = "▶ Play";
+    playBtn.addEventListener("click", function() {
+      tmPlayLibraryTrack(track);
+    });
+
+    var removeBtn = document.createElement("button");
+    removeBtn.className = "tmRemoveBtn";
+    removeBtn.textContent = "Remove";
+    removeBtn.addEventListener("click", function() {
+      var currentLibrary = loadMusicLibrary();
+      currentLibrary.splice(index, 1);
+      saveMusicLibrary(currentLibrary);
+      tmRenderYourMusic();
+      tmRenderSongs();
+      tmUpdateHomeLibraryCount();
+    });
+
+    row.appendChild(playBtn);
+    row.appendChild(removeBtn);
+    listEl.appendChild(row);
+  });
+}
+
+// catalog tracks point at real .mp3 files that need to sit alongside
+// index.html; device tracks are stored as data URLs (same trick PhotoBooth
+// uses for photos/videos) so they actually survive a reload via localStorage,
+// unlike a plain blob: URL which dies as soon as the page unloads
+function tmPlayLibraryTrack(track) {
+  var audio = document.querySelector("#tmAudio");
+  var player = document.querySelector("#tmPlayer");
+  var nowPlaying = document.querySelector("#tmNowPlaying");
+  if (!audio || !player || !nowPlaying) return;
+
+  nowPlaying.textContent = "🎵 " + track.name;
+  audio.src = track.file;
+  player.style.display = "block";
+  audio.play().catch(function() {
+    nowPlaying.textContent = "🎵 " + track.name + " — press ▶ play";
+  });
+}
+
+// ---- drag-and-drop real files in from the person's device ----
+var tmDropZone = document.querySelector("#tmDropZone");
+if (tmDropZone) {
+  ["dragenter", "dragover"].forEach(function(evt) {
+    tmDropZone.addEventListener(evt, function(e) {
+      e.preventDefault();
+      tmDropZone.classList.add("dragOver");
+    });
+  });
+  ["dragleave", "drop"].forEach(function(evt) {
+    tmDropZone.addEventListener(evt, function(e) {
+      e.preventDefault();
+      tmDropZone.classList.remove("dragOver");
+    });
+  });
+  tmDropZone.addEventListener("drop", function(e) {
+    var files = Array.prototype.slice.call(e.dataTransfer.files || []);
+    var audioFiles = files.filter(function(f) { return f.type.indexOf("audio") === 0; });
+
+    if (!audioFiles.length) {
+      alert("That doesn't look like an audio file - try dragging in an mp3, wav, or similar.");
+      return;
+    }
+
+    audioFiles.forEach(function(file) {
+      blobToDataUrl(file, function(dataUrl) {
+        var library = loadMusicLibrary();
+        library.push({
+          id: "device-" + Date.now() + "-" + Math.floor(Math.random() * 10000),
+          name: file.name.replace(/\.[^/.]+$/, ""),
+          artist: "From your device",
+          icon: null,
+          file: dataUrl,
+          source: "device"
+        });
+        saveMusicLibrary(library);
+        tmRenderYourMusic();
+        tmUpdateHomeLibraryCount();
+      });
+    });
+  });
+}
+
+// re-syncs everything on screen with whatever's currently in storage - used
+// both when the app window opens and after a backup restore
+function renderMusicApp() {
+  tmRefreshPremiumUI();
+  tmRenderSongs();
+  tmUpdateHomeLibraryCount();
+  if (musicScreen.style.display === "flex") {
+    var activeTab = document.querySelector(".tmTabBtn.active");
+    tmGoToTab(activeTab ? activeTab.dataset.tmPage : "home");
+  }
+}
+
+function refreshMusicAppFromStorage() {
+  renderMusicApp();
+}
+
+renderMusicApp();

@@ -389,6 +389,160 @@ body.light-mode [id$="header"] {
 body.light-mode #taskbar {
   background-color: rgba(0,0,0,0.08) !important;
 }
+
+/* ---- Tuff Music ---- */
+#tmTabs {
+  display: flex;
+  gap: 4px;
+  padding: 0 16px 10px 16px;
+  border-bottom: 1px solid #3a3a3a;
+  flex-shrink: 0;
+}
+.tmTabBtn {
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: 13px;
+  font-weight: bold;
+  padding: 8px 12px;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  font-family: inherit;
+}
+.tmTabBtn:hover { color: #ddd; }
+.tmTabBtn.active { color: #fff; border-bottom: 3px solid #3b82f6; }
+
+#tmContent {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  color: #fff;
+}
+.tmPage { display: none; padding: 20px; }
+.tmPage.tmPageActive { display: block; }
+
+.tmBtn {
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  background: #3b82f6;
+  color: white;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  font-family: inherit;
+}
+.tmBtn:hover { background: #2563eb; }
+.tmBtn:disabled { cursor: default; }
+
+#tmPremiumBanner {
+  background: linear-gradient(135deg, #3b3b3b, #2a2a2a);
+  border: 1px solid #444;
+  border-radius: 12px;
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 22px;
+}
+.tmPremiumBadge {
+  display: none;
+  background: #3b82f6;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 3px 8px;
+  border-radius: 999px;
+  margin-left: 8px;
+  vertical-align: middle;
+}
+.tmSectionTitle { font-size: 13px; color: #ccc; margin: 0 0 10px; font-weight: bold; }
+.tmHomeGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+}
+.tmHomeCard {
+  background: #1d1d1d;
+  border-radius: 10px;
+  padding: 12px;
+  cursor: pointer;
+  transition: 0.15s;
+}
+.tmHomeCard:hover { background: #292929; transform: translateY(-2px); }
+.tmHomeCardArt { width: 100%; aspect-ratio: 1; border-radius: 8px; margin-bottom: 8px; }
+.tmHomeCardTitle { font-size: 12.5px; font-weight: bold; }
+.tmHomeCardSub { font-size: 11px; color: #999; margin-top: 2px; }
+
+#tmStations {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 4px 20px 20px;
+}
+.tmStation { background: #1d1d1d; border-radius: 10px; padding: 12px; cursor: pointer; transition: 0.15s; }
+.tmStation:hover { background: #292929; transform: translateY(-2px); }
+.tmStation img { width: 52px; height: 52px; object-fit: contain; border-radius: 8px; background: #333; margin-bottom: 8px; }
+.tmStationName { font-size: 13.5px; font-weight: bold; }
+.tmStationInfo { color: #aaa; font-size: 11.5px; margin-top: 4px; }
+
+.tmSongRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: #1d1d1d;
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 8px;
+}
+.tmSongArt { width: 40px; height: 40px; border-radius: 7px; flex-shrink: 0; object-fit: cover; background: #444; }
+.tmSongMeta { flex: 1; min-width: 0; }
+.tmSongName { font-weight: bold; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tmSongArtist { color: #999; font-size: 11.5px; }
+.tmDownloadBtn { border: none; border-radius: 7px; padding: 7px 12px; font-size: 12px; background: #333; color: #fff; cursor: pointer; flex-shrink: 0; min-width: 88px; font-family: inherit; }
+.tmDownloadBtn:hover { background: #444; }
+.tmDownloadBtn.downloaded { background: #1f5c33; cursor: default; }
+.tmDownloadBtn.downloaded:hover { background: #1f5c33; }
+.tmRemoveBtn { border: none; background: transparent; color: #999; padding: 6px 10px; font-size: 11.5px; cursor: pointer; flex-shrink: 0; font-family: inherit; }
+.tmRemoveBtn:hover { background: #333; color: #fff; border-radius: 6px; }
+
+#tmDropZone {
+  border: 2px dashed #444;
+  border-radius: 10px;
+  padding: 24px;
+  text-align: center;
+  color: #999;
+  font-size: 13px;
+  margin-bottom: 18px;
+  transition: 0.15s;
+}
+#tmDropZone.dragOver { border-color: #3b82f6; background: rgba(59,130,246,0.08); color: #ddd; }
+
+.tmSourceTag {
+  font-size: 9.5px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 3px 6px;
+  border-radius: 5px;
+  flex-shrink: 0;
+}
+.tmSourceTag.catalog { background: #3a2e1a; color: #e0b463; }
+.tmSourceTag.device { background: #1a3a35; color: #63e0c9; }
+
+#tmPlayer {
+  display: none;
+  flex-shrink: 0;
+  border-top: 1px solid #3a3a3a;
+  background: #202020;
+  padding: 10px 16px;
+  text-align: center;
+}
+#tmNowPlaying { margin-bottom: 6px; font-weight: bold; font-size: 12.5px; color: #fff; }
+#tmAudio { width: 100%; height: 32px; }
+
 [id$="header"] {
   border-bottom: 1px solid rgba(255,255,255,0.25);
   padding-bottom: 8px;
@@ -1166,6 +1320,93 @@ html, body {
       <div class="resizeHandle"></div>
     </div>
 
+    <!-- Tuff Music - Home / Radio / Songs / Your Music, matches the same
+         window chrome as every other app (traffic dots, divider line under
+         the header, resize handle) -->
+    <div id="music" style="border: solid; width: 640px; height: 480px; padding: 0; border-radius: 16px; background-color: #2b2b2b; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); display: none; flex-direction: column; overflow: hidden;">
+      <div id="musicheader" style="display: flex; align-items: center; gap: 6px; padding: 12px 16px 10px 16px; user-select: none;">
+        <div id="musicclose" style="width: 12px; height: 12px; border-radius: 50%; background-color: #EC6B5E; cursor: pointer;"></div>
+        <div id="musicminimize" style="width: 12px; height: 12px; border-radius: 50%; background-color: #F5BD4F; cursor: pointer;"></div>
+        <div id="musicfullscreen" style="width: 12px; height: 12px; border-radius: 50%; background-color: #61C454; cursor: pointer;"></div>
+        <div style="flex: 1; text-align: center; color: #999; font-size: 12px; font-weight: bold; margin-right: 54px;">🎵 Tuff Music</div>
+      </div>
+
+      <div id="tmTabs">
+        <button class="tmTabBtn active" data-tm-page="home">Home</button>
+        <button class="tmTabBtn" data-tm-page="radio">Radio</button>
+        <button class="tmTabBtn" data-tm-page="songs">Songs</button>
+        <button class="tmTabBtn" data-tm-page="yourMusic">Your Music</button>
+      </div>
+
+      <div id="tmContent">
+
+        <!-- Home -->
+        <div class="tmPage tmPageActive" id="tmHomePage">
+          <div id="tmPremiumBanner">
+            <div>
+              <h2 style="margin:0 0 6px; font-size:18px;">Try Tuff Music Premium free<span id="tmPremiumBadge" class="tmPremiumBadge">ACTIVE</span></h2>
+              <p id="tmPremiumText" style="margin:0; color:#bbb; font-size:13px; max-width:380px;">No ads on radio stations, unlimited song downloads to Your Music, and early access to new features. 30 days free, cancel anytime.</p>
+            </div>
+            <button id="tmPremiumBtn" class="tmBtn">Start Free Trial</button>
+          </div>
+
+          <div class="tmSectionTitle">Jump back in</div>
+          <div class="tmHomeGrid">
+            <div class="tmHomeCard" data-tm-goto="radio">
+              <div class="tmHomeCardArt" style="background:linear-gradient(135deg,#3b82f6,#1d4ed8);"></div>
+              <div class="tmHomeCardTitle">Browse Australian Radio</div>
+              <div class="tmHomeCardSub">Live streams</div>
+            </div>
+            <div class="tmHomeCard" data-tm-goto="songs">
+              <div class="tmHomeCardArt" style="background:linear-gradient(135deg,#e0b463,#a3712f);"></div>
+              <div class="tmHomeCardTitle">Discover Songs</div>
+              <div class="tmHomeCardSub">Add to Your Music</div>
+            </div>
+            <div class="tmHomeCard" data-tm-goto="yourMusic">
+              <div class="tmHomeCardArt" style="background:linear-gradient(135deg,#63e0c9,#1f8f7a);"></div>
+              <div class="tmHomeCardTitle">Your Music</div>
+              <div class="tmHomeCardSub" id="tmHomeLibraryCount">0 tracks</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Radio -->
+        <div class="tmPage" id="tmRadioPage">
+          <div style="text-align:center; padding:20px 25px 10px;">
+            <h2 style="margin:0 0 6px;">🇦🇺 Australian Radio</h2>
+            <p style="color:#999; margin:0 0 14px; font-size:13px;">Listen to Australian internet radio stations</p>
+            <button id="tmLoadStationsBtn" class="tmBtn">Load Australian Radios</button>
+          </div>
+          <div id="tmLoading" style="text-align:center; padding:20px; color:#aaa; font-size:13px;">Click the button to load stations.</div>
+          <div id="tmStations"></div>
+        </div>
+
+        <!-- Songs -->
+        <div class="tmPage" id="tmSongsPage">
+          <h2 style="margin:0 0 4px;">Songs</h2>
+          <p style="color:#999; margin:0 0 16px; font-size:13px;">"Downloading" a song here just adds it to Your Music in this app - it doesn't save an actual audio file to your device.</p>
+          <div id="tmSongsList"></div>
+        </div>
+
+        <!-- Your Music -->
+        <div class="tmPage" id="tmYourMusicPage">
+          <h2 style="margin:0 0 4px;">Your Music</h2>
+          <p style="color:#999; margin:0 0 16px; font-size:13px;">Songs you've downloaded from the Songs tab, plus anything you drag in from your own device.</p>
+          <div id="tmDropZone">Drag audio files from your computer here to add them to Your Music</div>
+          <div id="tmYourMusicList"></div>
+          <div id="tmYourMusicEmpty" style="text-align:center; color:#777; padding:30px 0; font-size:13px;">Nothing here yet - download a song or drag one in.</div>
+        </div>
+
+      </div>
+
+      <div id="tmPlayer">
+        <div id="tmNowPlaying">Nothing playing</div>
+        <audio id="tmAudio" controls></audio>
+      </div>
+
+      <div class="resizeHandle"></div>
+    </div>
+
     <div id="taskbar" style="position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 12px; backdrop-filter: blur(10px); background-color: rgba(255, 255, 255, 0.15); border-radius: 16px; padding: 8px 12px; z-index: 9999;">
   <!-- dockOpenApps and dockMinimizedApps are split by the little divider -
        apps you minimize slide over to the right side, same as real macOS -->
@@ -1246,4 +1487,3 @@ html, body {
 
 </body>
 </html>
-
