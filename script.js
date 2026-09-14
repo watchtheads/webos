@@ -5544,6 +5544,16 @@ function saveMusicLibrary(library) {
   }
 }
 
+function tmDisplayName(name) {
+  var username = (localStorage.getItem("tuffos-username") || "").trim().toLowerCase();
+  if (username === "bart" && name === "Homer Let the Bart's Out") {
+    return "Homer Let the You's Out";
+  }
+  return name;
+}
+
+
+
 function tmRenderSongs() {
   var songsListEl = document.querySelector("#tmSongsList");
   if (!songsListEl) return;
@@ -5558,7 +5568,7 @@ function tmRenderSongs() {
     row.innerHTML =
       '<img class="tmSongArt" src="' + song.icon + '" alt="" onerror="this.style.background=\'#444\'; this.src=\'\';">' +
       '<div class="tmSongMeta">' +
-        '<div class="tmSongName">' + song.name + '</div>' +
+        '<div class="tmSongName">' + tmDisplayName(song.name) + '</div>' +
         '<div class="tmSongArtist">' + song.artist + '</div>' +
       '</div>';
 
@@ -5615,7 +5625,7 @@ function tmRenderYourMusic() {
     row.innerHTML =
       artHtml +
       '<div class="tmSongMeta">' +
-        '<div class="tmSongName">' + tmEscapeHTML(track.name) + '</div>' +
+        '<div class="tmSongName">' + tmEscapeHTML(tmDisplayName(track.name)) + '</div>' +
         '<div class="tmSongArtist">' + tmEscapeHTML(track.artist || "") + '</div>' +
       '</div>' +
       '<span class="tmSourceTag ' + (track.source === "device" ? "device" : "catalog") + '">' +
@@ -5657,7 +5667,7 @@ function tmPlayLibraryTrack(track) {
   var nowPlaying = document.querySelector("#tmNowPlaying");
   if (!audio || !player || !nowPlaying) return;
 
-  nowPlaying.textContent = "🎵 " + track.name;
+  nowPlaying.textContent = "🎵 " + tmDisplayName(track.name);
   audio.src = track.file;
   player.style.display = "block";
   audio.play().catch(function() {
